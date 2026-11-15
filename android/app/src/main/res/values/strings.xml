@@ -163,6 +163,32 @@
     <string name="servers_turn_pass_label">TURN password</string>
     <string name="servers_turn_blank_hint">blank unless TURN is set above</string>
     <string name="servers_err_rendezvous">Must start with wss:// (or ws:// on your own LAN).</string>
+    <string name="servers_nostr_title">Nostr relays</string>
+    <string name="servers_nostr_label">Relay addresses</string>
+    <string name="servers_nostr_body">How the two phones find each other first, before Rendezvous. Leave it empty to use Tawny’s public relays, or list your own (up to 5, separated by commas) to use only those. A relay only ever sees sealed envelopes: never your video, never your pairing key.</string>
+    <string name="servers_err_nostr">Each relay must start with wss:// (or ws:// on your own LAN). Check <xliff:g id="value">%1$s</xliff:g>.</string>
+    <string name="only_title">Use only my relays</string>
+    <string name="only_sub">Turns off Tawny’s backup server too. Your relays are tested from this phone before it is switched on.</string>
+    <string name="only_err_empty">List at least one relay of your own to use only your relays.</string>
+    <string name="only_testing_title">Testing your relays</string>
+    <string name="only_testing_body">Sending a sealed test message through each relay from this phone. This takes up to 20 seconds.</string>
+    <string name="only_row_connect">%1$s: could not connect from this phone.</string>
+    <string name="only_row_no_answer">%1$s: the test did not finish.</string>
+    <string name="only_fail_title">Not switched on</string>
+    <string name="only_fail_body">None of your relays delivered the test message from this phone, so Tawny’s backup stays in place. Your relays are saved. Check the addresses, and that this phone can reach them (for a relay at home, that usually means Tailscale or your home Wi-Fi).</string>
+    <string name="only_confirm_title">Use only your relays?</string>
+    <string name="only_confirm_body">Before you switch the backup off:\n\n• No backup. If your relays are down or out of reach, your devices do not connect until they are back.\n\n• Every device needs the same relays. Set them on the other phone or computer too, or the two will never meet.\n\n• Tawny’s video relay is switched off with it. Away from home, video then needs a direct connection or a video relay (TURN) of your own, below on this screen.\n\n• To undo it, turn the switch off here and save.</string>
+    <string name="only_confirm_yes">Use only my relays</string>
+    <string name="only_confirm_no">Keep the backup</string>
+    <string name="only_on_toast">Only your relays from now on.</string>
+    <string name="servers_err_nostr_many">Up to 5 relays.</string>
+    <string name="servers_nostr_check_title">Last check on this phone</string>
+    <string name="servers_nostr_ok">%1$s: works (%2$d ms)</string>
+    <string name="servers_nostr_refused">%1$s: refused Tawny’s messages (%2$s). Not used for now.</string>
+    <string name="servers_nostr_silent">%1$s: took the message but never delivered it. Not used for now.</string>
+    <string name="servers_nostr_unreachable">%1$s: could not connect from this network last time.</string>
+    <string name="servers_nostr_untested">%1$s: not checked yet. It is tested on the next call.</string>
+    <string name="privacy_sum_nostr">Nostr relays: %1$s</string>
     <string name="servers_err_stun">Must start with stun: or stuns: — check <xliff:g id="value">%1$s</xliff:g>.</string>
     <string name="servers_err_turn">Must start with turn: or turns: — check <xliff:g id="value">%1$s</xliff:g>.</string>
     <string name="servers_err_turn_user">Required — this TURN server needs a username.</string>
@@ -397,7 +423,7 @@
     <string name="privacy_lan_title">Direct Wi-Fi path</string>
     <string name="privacy_lan_sub">The Monitor runs a small relay on your Wi-Fi and puts its address in the pairing code. Off: nothing listens on the phone, the code has no address, and every session goes through your rendezvous.</string>
     <string name="privacy_note_on">Takes effect on the next session. Nothing here is checked against a live server. A wrong address shows up as a call that does not connect.</string>
-    <string name="privacy_err_no_path">With the direct Wi-Fi path off, this is the only way the phones can meet. Add a rendezvous, or turn the Wi-Fi path back on.</string>
+    <string name="privacy_err_no_path">With the direct Wi-Fi path off, this is the only way the phones can meet. Add a rendezvous or a Nostr relay, or turn the Wi-Fi path back on.</string>
     <string name="privacy_err_always_no_turn">“Always” relays every call, so it needs a TURN server: add one here, or let your rendezvous hand one out.</string>
     <string name="privacy_saved_title">Tighter privacy is on</string>
     <string name="privacy_sum_intro">From the next session this phone contacts only:</string>

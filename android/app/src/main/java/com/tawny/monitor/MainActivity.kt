@@ -559,7 +559,7 @@ class MainActivity : AppCompatActivity() {
         val role = prefs.getString("role", null)
         val key = prefs.getString("channelKey", null)
         val signal = prefs.getString("signalUrl", null)
-        val canViewerResume = !key.isNullOrBlank() && (!signal.isNullOrBlank() || hasRendezvous)
+        val canViewerResume = !key.isNullOrBlank() && (!signal.isNullOrBlank() || hasRemotePath)
         // A recreate (theme flip, system light/dark change) carries the screen
         // in the instance state — honour it instead of re-running the cold-start
         // routing, which would send the user back to the front door.
@@ -1714,18 +1714,30 @@ class MainActivity : AppCompatActivity() {
         swipeNav(back = diagBack, forward = null)
         val report = Diag.dump().ifBlank { getString(R.string.diag_none) }
 
+        // The whole screen scrolls. It used to be a fixed column whose log took
+        // "the rest" of the height: on a phone held sideways the rest was
+        // nothing, and the links under it (Clear, Servers) fell off the bottom
+        // with no way to reach them. The log now has a height of its own and
+        // scrolls inside the page (nested scrolling).
+        val page = androidx.core.widget.NestedScrollView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(MP, MP)
+            isFillViewport = true
+        }
         val outer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             val p = dp(16); setPadding(p, p, p, p)
-            layoutParams = FrameLayout.LayoutParams(MP, MP)
+            layoutParams = FrameLayout.LayoutParams(MP, WC)
         }
+        page.addView(outer)
         outer.addView(backLink { diagBack() })
         outer.addView(heading(getString(R.string.diag_title), getString(R.string.diag_subtitle)))
 
         // Vertical scroller wrapping a horizontal one: the lines are long and
-        // must not wrap, so the log pans in both directions.
-        val vScroll = ScrollView(this).apply {
-            layoutParams = LinearLayout.LayoutParams(MP, 0, 1f).also { it.topMargin = dp(12) }
+        // must not wrap, so the log pans in both directions. Half the screen
+        // tall, never under 200dp.
+        val logHeight = maxOf(dp(200), resources.displayMetrics.heightPixels / 2)
+        val vScroll = androidx.core.widget.NestedScrollView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(MP, logHeight).also { it.topMargin = dp(12) }
             background = roundRect(Hue.PANEL, Hue.LINE, Radius.CARD)
             val p = dp(12); setPadding(p, p, p, p)
         }
@@ -1789,10 +1801,10 @@ class MainActivity : AppCompatActivity() {
         // itself: a support surface, not a feature.
         outer.addView(link(
             if (strictPrivacy()) getString(R.string.servers_meta_strict)
-            else if (customRendezvous().isNotBlank()) getString(R.string.servers_meta_using_own)
+            else if (customRendezvous().isNotBlank() || customNostr().isNotEmpty()) getString(R.string.servers_meta_using_own)
             else getString(R.string.servers_meta_default)
         ) { showServers() })
-        root.addView(outer)
+        root.addView(page)
     }
 
     /**
@@ -1826,6 +1838,7 @@ class MainActivity : AppCompatActivity() {
         var turnMode = strictTurnMode()
         var turnFetch = prefs.getBoolean(PREF_TURN_FETCH, true)
         var lanPath = prefs.getBoolean(PREF_LAN_PATH, true)
+        var only = prefs.getBoolean(PREF_NOSTR_ONLY, false)
 
         val scroll = ScrollView(this).apply { layoutParams = FrameLayout.LayoutParams(MP, MP) }
         val col = column(scroll = true)
@@ -1979,6 +1992,34 @@ class MainActivity : AppCompatActivity() {
             return input
         }
 
+        col.addView(TextView(this).apply {
+            text = getString(R.string.servers_nostr_title)
+            setTextColor(Hue.TEXT)
+            textSize = Type.SUB
+            typeface = uiFontSemi
+            layoutParams = lp(topMargin = 28)
+        })
+        col.addView(aboutBody(getString(R.string.servers_nostr_body)).apply { layoutParams = lp(topMargin = 6) })
+        val nostrIn = field(getString(R.string.servers_nostr_label), "wss://relay.example.net, wss://…", PREF_NOSTR)
+        if (nostrRelays().isNotEmpty()) {
+            col.addView(TextView(this).apply {
+                text = getString(R.string.servers_nostr_check_title)
+                setTextColor(Hue.TEXT)
+                textSize = Type.BODY
+                typeface = uiFontSemi
+                layoutParams = lp(topMargin = 12)
+            })
+            col.addView(aboutBody(nostrHealthText()).apply { layoutParams = lp(topMargin = 4) })
+        }
+        // "Only my relays": no rendezvous behind them. Never switched on blind:
+        // Save tests the relays from this phone first and then asks
+        // (confirmOnlyMode). Tighter privacy already means this, so the row is
+        // hidden while that is on.
+        val onlyRow = switchRow(
+            getString(R.string.only_title), getString(R.string.only_sub), only
+        ) { knob -> only = !only; knob.on = only }
+        col.addView(onlyRow)
+
         val rvIn = field("Rendezvous", "wss://relay.example.net", PREF_RENDEZVOUS)
 
         col.addView(TextView(this).apply {
@@ -2096,6 +2137,7 @@ class MainActivity : AppCompatActivity() {
         /** Everything that reads differently once tighter privacy is on. */
         fun paintStrict() {
             strictBox.visibility = if (strict) View.VISIBLE else View.GONE
+            onlyRow.visibility = if (strict) View.GONE else View.VISIBLE
             tailscaleTip.visibility = if (strict) View.GONE else View.VISIBLE
             intro.text = getString(if (strict) R.string.privacy_servers_body else R.string.servers_body)
             stunTurnBody.text = getString(if (strict) R.string.privacy_stunturn_body else R.string.servers_stunturn_body)
@@ -2134,12 +2176,13 @@ class MainActivity : AppCompatActivity() {
 
         col.addView(primary(getString(R.string.common_save)) {
             val rv = rvIn.text.toString().trim()
+            val nostrList = nostrIn.text.toString().split(',', ' ', '\n').map { it.trim() }.filter { it.isNotEmpty() }
             val stunList = stunIn.text.toString().split(',').map { it.trim() }.filter { it.isNotEmpty() }
             val turnList = turnIn.text.toString().split(',').map { it.trim() }.filter { it.isNotEmpty() }
             val userVal = userIn.text.toString().trim()
             val passVal = passIn.text.toString()
 
-            listOf(rvIn, stunIn, turnIn, userIn, passIn).forEach { clearInvalid(it) }
+            listOf(nostrIn, rvIn, stunIn, turnIn, userIn, passIn).forEach { clearInvalid(it) }
             var firstBad: EditText? = null
             val issues = StringBuilder()
             fun flag(input: EditText, message: String) {
@@ -2148,6 +2191,13 @@ class MainActivity : AppCompatActivity() {
                 if (firstBad == null) firstBad = input
             }
 
+            val nostrBad = nostrList.filterNot { RELAY_URL_RE.matches(it) }
+            if (nostrBad.isNotEmpty())
+                flag(nostrIn, getString(R.string.servers_err_nostr, nostrBad.first()))
+            else if (nostrList.size > MAX_NOSTR)
+                flag(nostrIn, getString(R.string.servers_err_nostr_many))
+            if (!strict && only && nostrBad.isEmpty() && nostrList.isEmpty())
+                flag(nostrIn, getString(R.string.only_err_empty))
             if (rv.isNotEmpty() && !RELAY_URL_RE.matches(rv))
                 flag(rvIn, getString(R.string.servers_err_rendezvous))
             val stunBad = stunList.filterNot { STUN_URL_RE.matches(it) }
@@ -2168,7 +2218,7 @@ class MainActivity : AppCompatActivity() {
             // Under tighter privacy the only checks left are the ones where the
             // combination cannot work at all — everything else is the user's
             // call, including a setup that only works on their own Wi-Fi.
-            if (strict && rv.isEmpty() && !lanPath)
+            if (strict && rv.isEmpty() && nostrList.isEmpty() && !lanPath)
                 flag(rvIn, getString(R.string.privacy_err_no_path))
             if (strict && turnMode == "always" && turnList.isEmpty() && (!turnFetch || rv.isEmpty()))
                 flag(turnIn, getString(R.string.privacy_err_always_no_turn))
@@ -2181,7 +2231,13 @@ class MainActivity : AppCompatActivity() {
                 )
                 return@primary
             }
+            // "Only my relays" stays on only if it already was, for this very
+            // list. Anything else saves it off and goes through the test first.
+            val wantOnly = !strict && only && nostrList.isNotEmpty()
+            val keepOnly = wantOnly && prefs.getBoolean(PREF_NOSTR_ONLY, false) && customNostr() == nostrList.take(MAX_NOSTR)
             prefs.edit()
+                .putString(PREF_NOSTR, nostrList.joinToString(","))
+                .putBoolean(PREF_NOSTR_ONLY, keepOnly)
                 .putString(PREF_RENDEZVOUS, rv)
                 .putString(PREF_STUN, stunIn.text.toString().trim())
                 .putString(PREF_TURN, turnIn.text.toString().trim())
@@ -2192,21 +2248,22 @@ class MainActivity : AppCompatActivity() {
                 .putBoolean(PREF_TURN_FETCH, turnFetch)
                 .putBoolean(PREF_LAN_PATH, lanPath)
                 .apply()
-            Diag.log("shell", "servers saved rv=${rv.ifBlank { "default" }}" +
+            Diag.log("shell", "servers saved rv=${rv.ifBlank { "default" }} nostr=${nostrList.size.takeIf { it > 0 } ?: "default"}" +
                 if (strict) " strict turn=$turnMode fetch=$turnFetch lan=$lanPath stun=${stunList.size}" else "")
             // The asset server bakes the allowed relay hosts into its CSP, and
             // the live page has already read the old settings — so both are
             // rebuilt on the next session rather than patched underneath one.
             stopServers()
+            if (wantOnly && !keepOnly) { confirmOnlyMode(nostrList.take(MAX_NOSTR)); return@primary }
             if (strict) {
                 themedDialog(
                     title = getString(R.string.privacy_saved_title),
-                    body = strictSummary(rv, stunList, turnList, turnMode, turnFetch, lanPath),
+                    body = strictSummary(rv, nostrList, stunList, turnList, turnMode, turnFetch, lanPath),
                     primaryLabel = getString(R.string.common_ok), onPrimary = { showDiagnostics() }
                 )
                 return@primary
             }
-            val usingOwn = rv.isNotBlank() || turnList.isNotEmpty() || stunIn.text.toString().isNotBlank()
+            val usingOwn = rv.isNotBlank() || nostrList.isNotEmpty() || turnList.isNotEmpty() || stunIn.text.toString().isNotBlank()
             themedDialog(
                 title = if (rv.isNotBlank() && rv.startsWith("ws://")) getString(R.string.servers_saved_warning_title) else getString(R.string.servers_saved),
                 body = if (rv.isNotBlank() && rv.startsWith("ws://"))
@@ -2226,7 +2283,7 @@ class MainActivity : AppCompatActivity() {
                 primaryLabel = getString(R.string.common_clear),
                 onPrimary = {
                     prefs.edit()
-                        .remove(PREF_RENDEZVOUS).remove(PREF_STUN).remove(PREF_TURN)
+                        .remove(PREF_NOSTR).remove(PREF_NOSTR_ONLY).remove(PREF_RENDEZVOUS).remove(PREF_STUN).remove(PREF_TURN)
                         .remove(PREF_TURN_USER).remove(PREF_TURN_PASS)
                         .remove(PREF_STRICT).remove(PREF_TURN_MODE)
                         .remove(PREF_TURN_FETCH).remove(PREF_LAN_PATH)
@@ -2244,16 +2301,130 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
+     * "Only my relays", the careful way: the relays are already saved (with the
+     * switch off), so test each one from this phone right now, show what came
+     * back, and switch the rendezvous off only if at least one delivered and
+     * the user still says yes after reading what it costs.
+     */
+    private fun confirmOnlyMode(relays: List<String>) {
+        var waiting: AlertDialog? = null
+        var cancelled = false
+        themedDialog(
+            title = getString(R.string.only_testing_title),
+            body = getString(R.string.only_testing_body),
+            primaryLabel = getString(R.string.common_cancel),
+            onPrimary = { cancelled = true; showServers() },
+            cancelable = false,
+            onShow = { waiting = it }
+        )
+        runRelayTest(relays) { report ->
+            if (cancelled) return@runRelayTest
+            try { waiting?.dismiss() } catch (e: Exception) { /* already gone */ }
+            val byUrl = HashMap<String, org.json.JSONObject>()
+            if (report != null) for (i in 0 until minOf(report.length(), 8)) {
+                report.optJSONObject(i)?.let { byUrl[it.optString("url")] = it }
+            }
+            var good = 0
+            val lines = relays.joinToString("\n") { url ->
+                val name = relayHost(url) ?: url
+                val r = byUrl[url]
+                when {
+                    r == null -> getString(R.string.only_row_no_answer, name)
+                    r.optBoolean("ok") -> { good++; getString(R.string.servers_nostr_ok, name, r.optInt("ms", 0).coerceAtLeast(0)) }
+                    r.optString("why") == "refused" -> getString(
+                        R.string.servers_nostr_refused, name,
+                        r.optString("detail").filterNot { it.isISOControl() }.take(80).ifBlank { "-" })
+                    r.optString("why") == "connect" -> getString(R.string.only_row_connect, name)
+                    else -> getString(R.string.servers_nostr_silent, name)
+                }
+            }
+            // "Last check on this phone" shows this test too.
+            val health = org.json.JSONArray()
+            for ((url, r) in byUrl) health.put(org.json.JSONObject()
+                .put("url", url)
+                .put("v", when {
+                    r.optBoolean("ok") -> "ok"
+                    r.optString("why") == "refused" -> "refused"
+                    r.optString("why") == "connect" -> "unreachable"
+                    else -> "no-echo"
+                })
+                .put("why", r.optString("detail"))
+                .put("ms", r.optInt("ms", -1)))
+            saveNostrHealth(health)
+            Diag.log("shell", "only-my-relays test: $good of ${relays.size} delivered")
+            if (good == 0) {
+                themedDialog(
+                    title = getString(R.string.only_fail_title),
+                    body = lines + "\n\n" + getString(R.string.only_fail_body),
+                    primaryLabel = getString(R.string.common_ok), onPrimary = { showServers() },
+                    cancelable = false
+                )
+                return@runRelayTest
+            }
+            themedDialog(
+                title = getString(R.string.only_confirm_title),
+                body = lines + "\n\n" + getString(R.string.only_confirm_body),
+                primaryLabel = getString(R.string.only_confirm_yes),
+                onPrimary = {
+                    prefs.edit().putBoolean(PREF_NOSTR_ONLY, true).apply()
+                    Diag.log("shell", "only-my-relays ON (${relays.size} relay(s), $good delivered)")
+                    stopServers()
+                    toast(getString(R.string.only_on_toast))
+                    showDiagnostics()
+                },
+                secondaryLabel = getString(R.string.only_confirm_no),
+                onSecondary = { showServers() },
+                cancelable = false
+            )
+        }
+    }
+
+    /**
+     * Test Nostr relays from this phone: one sealed envelope through each, and
+     * did it come back (public/nostr/relay-test.js, the test a call runs). The
+     * Nostr code is the page's, so it runs in a WebView nobody sees, loaded
+     * from this app's own asset server, whose connect-src already names the
+     * saved relays. [onDone] gets the page's report, or null if it never came.
+     */
+    private fun runRelayTest(relays: List<String>, onDone: (org.json.JSONArray?) -> Unit) {
+        val port = ensureAssetServer()
+        val view = WebView(this)
+        var finished = false
+        fun finish(report: org.json.JSONArray?) {
+            if (finished) return
+            finished = true
+            try { view.stopLoading(); view.destroy() } catch (e: Exception) { /* going away anyway */ }
+            onDone(report)
+        }
+        view.settings.apply {
+            javaScriptEnabled = true
+            safeBrowsingEnabled = false       // a bundled page on loopback; nothing to check
+        }
+        // Same guard as the main bridge: only ever this app's own bundled page.
+        view.addJavascriptInterface(object {
+            @JavascriptInterface
+            fun done(json: String) {
+                val report = try { org.json.JSONArray(json.take(8_000)) } catch (e: Exception) { null }
+                runOnUiThread { finish(report) }
+            }
+        }, "TawnyRelayTest")
+        view.loadUrl("http://127.0.0.1:$port/relay-test.html#" + Uri.encode(org.json.JSONArray(relays).toString()))
+        // Each test gives up by itself after ~18 s; this is for a page that never ran.
+        window.decorView.postDelayed({ finish(null) }, 30_000)
+    }
+
+    /**
      * What this phone will contact, and what it no longer will, in plain words.
      * Shown on Save so the last thing the user reads before leaving is the
      * whole consequence of the switch, not a generic "Saved".
      */
     private fun strictSummary(
-        rv: String, stun: List<String>, turn: List<String>,
+        rv: String, nostr: List<String>, stun: List<String>, turn: List<String>,
         turnMode: String, turnFetch: Boolean, lanPath: Boolean
     ): String {
         val none = getString(R.string.privacy_sum_none)
         val sb = StringBuilder(getString(R.string.privacy_sum_intro)).append("\n\n")
+        sb.append("• ").append(getString(R.string.privacy_sum_nostr, if (nostr.isEmpty()) none else nostr.joinToString(", "))).append('\n')
         sb.append("• ").append(getString(R.string.privacy_sum_rv, rv.ifBlank { getString(R.string.privacy_sum_rv_none) })).append('\n')
         sb.append("• ").append(getString(R.string.privacy_sum_stun, if (stun.isEmpty()) none else stun.joinToString(", "))).append('\n')
         val turnDesc = when {
@@ -2814,7 +2985,7 @@ class MainActivity : AppCompatActivity() {
             // The Wi-Fi path is a shortcut, not the only road: with a rendezvous
             // set, go on without it (0 = no relay, and no `h=` in the code)
             // instead of stopping the Monitor at an error.
-            if (port < 0 && hasRendezvous) {
+            if (port < 0 && hasRemotePath) {
                 Diag.log("shell", "signal server unavailable, rendezvous only")
                 port = 0
             }
@@ -4793,7 +4964,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun onWatcher() {
         val ip = lanIp()
-        if (ip == null && !hasRendezvous) {
+        if (ip == null && !hasRemotePath) {
             themedDialog(
                 title = getString(R.string.wifi_title),
                 body = getString(R.string.wifi_body),
@@ -5148,6 +5319,9 @@ class MainActivity : AppCompatActivity() {
     private val PREF_TURN = "srvTurn"
     private val PREF_TURN_USER = "srvTurnUser"
     private val PREF_TURN_PASS = "srvTurnPass"
+    /** The user's own Nostr relays, comma-separated; empty = the build's. */
+    private val PREF_NOSTR = "srvNostr"
+    private val MAX_NOSTR = 5
 
     // ---- tighter privacy -----------------------------------------------------
     //
@@ -5192,8 +5366,74 @@ class MainActivity : AppCompatActivity() {
     private fun preferredRendezvous(): String =
         customRendezvous().ifBlank { builtInRendezvous() }
 
-    /** Whether this install can reach a Handheld off the LAN, by any route. */
+    /** Whether a rendezvous is configured (the Cloudflare-style relay, and its tickets). */
     private val hasRendezvous get() = preferredRendezvous().isNotBlank()
+
+    // ---- Nostr relays ------------------------------------------------------------
+    // The main way two phones meet off the Wi-Fi (public/nostr/transport.js), with
+    // the rendezvous behind it. The user's own list replaces the build's; under
+    // tighter privacy there is no default, only what the user wrote.
+    private fun customNostr(): List<String> = csvPref(PREF_NOSTR, RELAY_URL_RE).take(MAX_NOSTR)
+    private fun builtInNostr(): List<String> =
+        if (strictPrivacy()) emptyList()
+        else BuildConfig.NOSTR_RELAYS.split(',').map { it.trim() }.filter { RELAY_URL_RE.matches(it) }
+    private fun nostrRelays(): List<String> = customNostr().ifEmpty { builtInNostr() }
+
+    // What the page last found out about each relay (public/nostr/relay-health.js:
+    // it sends itself one sealed message through each relay and only uses the
+    // ones that deliver it). Display only: the page keeps its own copy and
+    // decides on that; this is what the Servers screen shows an advanced user.
+    // "Only my relays": the page dials no rendezvous at all. Only ever with a
+    // list of the user's own, and never under tighter privacy (which already
+    // has no fallback and its own rules).
+    private val PREF_NOSTR_ONLY = "srvNostrOnly"
+    private fun nostrOnly(): Boolean =
+        !strictPrivacy() && prefs.getBoolean(PREF_NOSTR_ONLY, false) && customNostr().isNotEmpty()
+
+    private val PREF_NOSTR_HEALTH = "srvNostrHealth"
+    private val NOSTR_VERDICTS = setOf("ok", "refused", "no-echo", "unreachable")
+
+    private fun nostrHealth(): org.json.JSONObject =
+        try { org.json.JSONObject(prefs.getString(PREF_NOSTR_HEALTH, null) ?: "{}") } catch (e: Exception) { org.json.JSONObject() }
+
+    private fun saveNostrHealth(report: org.json.JSONArray) {
+        val all = nostrHealth()
+        val now = System.currentTimeMillis()
+        for (i in 0 until minOf(report.length(), 8)) {
+            val o = report.optJSONObject(i) ?: continue
+            val url = o.optString("url")
+            val v = o.optString("v")
+            if (url.length > 200 || !RELAY_URL_RE.matches(url) || v !in NOSTR_VERDICTS) continue
+            val why = o.optString("why").filterNot { it.isISOControl() }.take(120)
+            all.put(url, org.json.JSONObject().put("v", v).put("why", why).put("ms", o.optInt("ms", -1)).put("at", now))
+        }
+        // Newest 16 only: the page can name any relay it was given, and this is
+        // a settings blob, not a log.
+        val keep = all.keys().asSequence().toList()
+            .sortedByDescending { all.optJSONObject(it)?.optLong("at") ?: 0L }.take(16)
+        val out = org.json.JSONObject()
+        for (k in keep) out.put(k, all.get(k))
+        prefs.edit().putString(PREF_NOSTR_HEALTH, out.toString()).apply()
+    }
+
+    /** One line per relay in use: what happened the last time this phone tried it. */
+    private fun nostrHealthText(): String {
+        val all = nostrHealth()
+        return nostrRelays().joinToString("\n") { url ->
+            val name = relayHost(url) ?: url
+            val h = all.optJSONObject(url)
+            when (h?.optString("v")) {
+                "ok" -> getString(R.string.servers_nostr_ok, name, h.optInt("ms", -1).coerceAtLeast(0))
+                "refused" -> getString(R.string.servers_nostr_refused, name, h.optString("why").ifBlank { "-" })
+                "no-echo" -> getString(R.string.servers_nostr_silent, name)
+                "unreachable" -> getString(R.string.servers_nostr_unreachable, name)
+                else -> getString(R.string.servers_nostr_untested, name)
+            }
+        }
+    }
+
+    /** Whether this install can reach a Handheld off the LAN, by any route. */
+    private val hasRemotePath get() = hasRendezvous || nostrRelays().isNotEmpty()
 
     private fun csvPref(key: String, scheme: Regex): List<String> =
         prefs.getString(key, "").orEmpty().split(',')
@@ -5234,6 +5474,10 @@ class MainActivity : AppCompatActivity() {
             csvPref(PREF_STUN, STUN_URL_RE).takeIf { it.isNotEmpty() }
                 ?.let { o.put("stun", org.json.JSONArray(it)) }
         }
+        // Only the user's own list is sent; without one the page uses the
+        // build's from config.json (or none at all under tighter privacy).
+        customNostr().takeIf { it.isNotEmpty() }?.let { o.put("nostr", org.json.JSONArray(it)) }
+        if (nostrOnly()) o.put("nostrOnly", true)
         if (turn.isNotEmpty()) {
             o.put("turn", org.json.JSONArray().put(org.json.JSONObject().apply {
                 put("urls", org.json.JSONArray(turn))
@@ -5314,7 +5558,7 @@ class MainActivity : AppCompatActivity() {
             encodedFragment = uri.encodedFragment,
             preferredRelayHost = relayHost(preferredRendezvous()),
             buildRelayHost = relayHost(builtInRendezvous()),
-            hasRendezvous = hasRendezvous
+            hasRendezvous = hasRemotePath   // a code with no h= and no rv= still meets over Nostr
         )
     }
 
@@ -5351,7 +5595,8 @@ class MainActivity : AppCompatActivity() {
         val hosts = listOfNotNull(
             relayHost(builtInRendezvous()),
             relayHost(custom)?.let { if (custom.startsWith("ws://", ignoreCase = true)) "ws://$it" else it }
-        )
+        ) + nostrRelays().mapNotNull { u -> relayHost(u)?.let { if (u.startsWith("ws://")) "ws://$it" else it } } +
+            BuildConfig.NOSTR_HOSTS.split(',').map { it.trim() }.filter { it.isNotEmpty() }   // devops: its mirror
         assetServer?.let { if (it.relayHosts == hosts) return it.port else { it.stop(); assetServer = null } }
         return AssetHttpServer(applicationContext, 8809, hosts).also { assetServer = it }.port
     }
@@ -5425,7 +5670,7 @@ class MainActivity : AppCompatActivity() {
             // started, nothing listens on this phone, and the code carries no
             // `h=`. The user's rendezvous is the only way in — and without one
             // there is no way in at all, which is said rather than hidden.
-            if (!hasRendezvous) { strictNothingToDial(); return }
+            if (!hasRemotePath) { strictNothingToDial(); return }
             goLiveWith(role, null)
             return
         }
@@ -5437,7 +5682,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         val lan = prefs.getString("signalUrl", null)?.takeIf { lanPathOn() }
-        if (lan == null && !hasRendezvous) {
+        if (lan == null && !hasRemotePath) {
             if (strictPrivacy()) { strictNothingToDial(); return }
             return showWelcome()
         }
@@ -6546,6 +6791,8 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                     // The first-call walkthrough was shown for this role.
+                    // Each Nostr relay's verdict from the page's own test.
+                    "relays" -> obj.optJSONArray("relays")?.let { saveNostrHealth(it) }
                     "coachDone" -> {
                         val r = obj.optString("role")
                         if (r == "viewer" || r == "station") {

@@ -164,6 +164,32 @@
     <string name="servers_turn_pass_label">Contraseña de TURN</string>
     <string name="servers_turn_blank_hint">déjalo vacío salvo que hayas puesto TURN arriba</string>
     <string name="servers_err_rendezvous">Debe empezar con wss:// (o ws:// en tu propia red local).</string>
+    <string name="servers_nostr_title">Relés Nostr</string>
+    <string name="servers_nostr_label">Direcciones de relés</string>
+    <string name="servers_nostr_body">Cómo se encuentran primero los dos teléfonos, antes de Rendezvous. Déjalo vacío para usar los relés públicos de Tawny, o escribe los tuyos (hasta 5, separados por comas) para usar solo esos. Un relé solo ve sobres sellados: nunca tu video, nunca tu clave de emparejamiento.</string>
+    <string name="servers_err_nostr">Cada relé debe empezar con wss:// (o ws:// en tu propia red local). Revisa <xliff:g id="value">%1$s</xliff:g>.</string>
+    <string name="only_title">Usar solo mis relés</string>
+    <string name="only_sub">También apaga el servidor de respaldo de Tawny. Tus relés se prueban desde este teléfono antes de activarlo.</string>
+    <string name="only_err_empty">Escribe al menos un relé propio para usar solo tus relés.</string>
+    <string name="only_testing_title">Probando tus relés</string>
+    <string name="only_testing_body">Enviando un mensaje sellado de prueba por cada relé desde este teléfono. Tarda hasta 20 segundos.</string>
+    <string name="only_row_connect">%1$s: no se pudo conectar desde este teléfono.</string>
+    <string name="only_row_no_answer">%1$s: la prueba no terminó.</string>
+    <string name="only_fail_title">No se activó</string>
+    <string name="only_fail_body">Ninguno de tus relés entregó el mensaje de prueba desde este teléfono, así que el respaldo de Tawny sigue en su lugar. Tus relés quedaron guardados. Revisa las direcciones y que este teléfono pueda alcanzarlas (para un relé en casa, normalmente con Tailscale o el Wi‑Fi de casa).</string>
+    <string name="only_confirm_title">¿Usar solo tus relés?</string>
+    <string name="only_confirm_body">Antes de apagar el respaldo:\n\n• Sin respaldo. Si tus relés están caídos o fuera de alcance, tus dispositivos no se conectan hasta que vuelvan.\n\n• Cada dispositivo necesita los mismos relés. Ponlos también en el otro teléfono o computadora, o nunca se encontrarán.\n\n• El relé de video de Tawny se apaga a la vez. Fuera de casa, el video necesita una conexión directa o un relé de video (TURN) propio, más abajo en esta pantalla.\n\n• Para deshacerlo, apaga el interruptor aquí y guarda.</string>
+    <string name="only_confirm_yes">Usar solo mis relés</string>
+    <string name="only_confirm_no">Mantener el respaldo</string>
+    <string name="only_on_toast">Desde ahora, solo tus relés.</string>
+    <string name="servers_err_nostr_many">Hasta 5 relés.</string>
+    <string name="servers_nostr_check_title">Última comprobación en este teléfono</string>
+    <string name="servers_nostr_ok">%1$s: funciona (%2$d ms)</string>
+    <string name="servers_nostr_refused">%1$s: rechazó los mensajes de Tawny (%2$s). Sin usar por ahora.</string>
+    <string name="servers_nostr_silent">%1$s: aceptó el mensaje pero nunca lo entregó. Sin usar por ahora.</string>
+    <string name="servers_nostr_unreachable">%1$s: no se pudo conectar desde esta red la última vez.</string>
+    <string name="servers_nostr_untested">%1$s: aún sin comprobar. Se prueba en la próxima llamada.</string>
+    <string name="privacy_sum_nostr">Relés Nostr: %1$s</string>
     <string name="servers_err_stun">Debe empezar con stun: o stuns:; revisa <xliff:g id="value">%1$s</xliff:g>.</string>
     <string name="servers_err_turn">Debe empezar con turn: o turns:; revisa <xliff:g id="value">%1$s</xliff:g>.</string>
     <string name="servers_err_turn_user">Obligatorio: este servidor TURN necesita un usuario.</string>
@@ -398,7 +424,7 @@
     <string name="privacy_lan_title">Camino directo por Wi-Fi</string>
     <string name="privacy_lan_sub">El monitor ejecuta un pequeño relé en tu Wi-Fi y pone su dirección en el código de emparejamiento. Desactivado: nada escucha en el teléfono, el código no lleva dirección y toda sesión pasa por tu rendezvous.</string>
     <string name="privacy_note_on">Se aplica en la próxima sesión. Nada de esto se comprueba contra un servidor real. Una dirección incorrecta se ve como una llamada que no conecta.</string>
-    <string name="privacy_err_no_path">Con el camino por Wi-Fi desactivado, esta es la única forma de que los teléfonos se encuentren. Agrega un rendezvous o vuelve a activar el Wi-Fi.</string>
+    <string name="privacy_err_no_path">Con el camino por Wi-Fi desactivado, esta es la única forma de que los teléfonos se encuentren. Agrega un rendezvous o un relé Nostr, o vuelve a activar el Wi-Fi.</string>
     <string name="privacy_err_always_no_turn">“Siempre” retransmite cada llamada, así que necesita un servidor TURN: agrega uno aquí o deja que tu rendezvous lo entregue.</string>
     <string name="privacy_saved_title">Privacidad estricta activa</string>
     <string name="privacy_sum_intro">Desde la próxima sesión este teléfono solo contacta:</string>
