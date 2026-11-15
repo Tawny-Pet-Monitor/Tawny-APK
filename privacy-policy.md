@@ -1,6 +1,6 @@
 # Tawny — Privacy Policy
 
-_Last updated: 2026-10-16_
+_Last updated: 2026-11-15_
 
 Tawny is a two-way pet monitor. One device (**the Monitor**) stays with your pet
 and sends its camera and microphone; one or more other devices (**Viewers**)
@@ -49,6 +49,23 @@ Video and audio use **WebRTC** and are encrypted end to end with DTLS-SRTP.
   - briefly processes the devices' **IP addresses**, as any internet connection
     must, to route packets. These are not logged to identify you and are not
     shared with anyone.
+
+- **From away, through relays first** (the GitHub APK, F-Droid, Desktop and
+  Docker editions; not the Play release yet): the devices first try to
+  introduce themselves through public **Nostr relays** (`relay.primal.net`,
+  `relay.nostr.net`, `relay.snort.social`, or the ones you set under Servers).
+  Every note they exchange is sealed so that only the other device can open
+  it. A relay:
+  - sees the device's **IP address**, as any internet connection shows;
+  - sees a random key for each paired device, which changes only when you
+    pair again, and the timing and size of the sealed notes (about one every
+    15 seconds while you are watching);
+  - never sees video, audio, names, your pairing key or how the devices
+    connect to each other.
+  These relays are run by third parties, not by the developer. If no relay
+  delivers, the rendezvous service above is used instead. With **Use only my
+  relays** switched on, neither the public relays nor the rendezvous are
+  contacted.
 
 - **To find a direct path**, each device may ask a public **STUN** server what
   its public IP address is. The Play release uses Cloudflare's

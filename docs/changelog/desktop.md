@@ -2,6 +2,27 @@
 
 Newest first. Linux AppImage and Flatpak.
 
+## 0.1.13
+
+Changes since 0.1.12. Same web client as Tawny for Android 1.0.5 (build 48, 85f235b).
+
+**New**
+- Devices find each other through Nostr relays first, with the rendezvous
+  service as the backup. Every note is sealed so only the other device can
+  open it, and each relay is tested before it is used.
+- Servers: set your own relays, see the last check for each one, and "Use
+  only my relays", which is tested and asks you to confirm before it switches
+  on.
+
+**Fixed**
+- AppImage: the microphone, and with it the Monitor's camera, could fail to
+  start on distributions newer than the build machine. The AppImage now
+  carries its own PulseAudio client library.
+
+**Security**
+- A pairing code is refused once it has expired, or if the Monitor never
+  showed it.
+
 ## 0.1.12
 
 Changes since 0.1.11. A security update. Same web client as 0.1.11.

@@ -449,9 +449,9 @@
     <string name="whatsnew_eyebrow">Actualizado a v%1$s</string>
     <string name="whatsnew_title">Tawny ahora es mejor</string>
     <string-array name="whatsnew_notes">
-        <item>Actualización de seguridad: los enlaces de emparejamiento se revisan con más rigor, así que un enlace no puede mostrar un nombre engañoso cuando pide conectarse</item>
-        <item>Corregido: un enlace de emparejamiento con caracteres inusuales en el nombre podía dejar en blanco la pantalla en vivo</item>
-        <item>Tawny ahora se compila con herramientas actualizadas y parcheadas tras una revisión de seguridad completa</item>
+        <item>Nuevo: tus dispositivos ahora se encuentran primero a través de relés Nostr, con el servicio de Tawny como respaldo, así que emparejar ya no depende de un solo servidor</item>
+        <item>Nuevo en Servidores: usa tus propios relés, mira cuáles funcionan o usa solo los tuyos</item>
+        <item>Seguridad: un código de emparejamiento caducado, o un código QR antiguo, ya no sirve para conectarse</item>
     </string-array>
     <string name="whatsnew_changelog">Ver el registro de cambios</string>
     <string name="whatsnew_thanks">Gracias por apoyar Tawny. Sigue siendo gratis para todos gracias a personas como tú.</string>

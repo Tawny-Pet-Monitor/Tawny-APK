@@ -448,9 +448,9 @@
     <string name="whatsnew_eyebrow">Updated to v%1$s</string>
     <string name="whatsnew_title">Tawny just got better</string>
     <string-array name="whatsnew_notes">
-        <item>Security update: pairing links are checked more strictly, so a link cannot show a misleading name when it asks to connect</item>
-        <item>Fixed: a pairing link with unusual characters in its name could leave the live screen blank</item>
-        <item>Tawny is now built with up-to-date, patched tools after a full security review</item>
+        <item>New: your devices now find each other through Nostr relays first, with Tawny\'s own service as the backup, so pairing no longer depends on one server</item>
+        <item>New in Servers: use your own relays, see which ones work, or use only your relays</item>
+        <item>Security: an expired pairing code, or an old QR code, can no longer be used to connect</item>
     </string-array>
     <string name="whatsnew_changelog">Read the full changelog</string>
     <string name="whatsnew_thanks">Thank you for supporting Tawny. It stays free for everyone because of people like you.</string>

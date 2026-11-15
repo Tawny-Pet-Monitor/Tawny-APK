@@ -2,6 +2,33 @@
 
 Newest first. Google Play builds.
 
+## 1.0.5 (build 48)
+
+Changes since 1.0.4. Released as the GitHub APK first; not on Google Play yet.
+The F-Droid edition with the same changes is 1.0.11.
+
+**New**
+- Devices find each other through Nostr relays first. Every note they exchange
+  is sealed so only the other device can open it, and each relay is tested
+  before it is used. Tawny's own rendezvous service stays as the backup, so
+  nothing changes if no relay answers. Same Wi-Fi works as before.
+- Servers: set your own relays, see the last check for each one, and "Use
+  only my relays", which pairs through your relays and nothing else. It is
+  tested from the phone and asks you to confirm before it switches on.
+- The Monitor's pairing code now also carries where to find it on the relays.
+  Phones paired earlier pick that up by themselves the next time they connect.
+
+**Security**
+- A pairing code is refused once it has expired, or if the Monitor never
+  showed it. Before, an old QR code or a forwarded link could still be used to
+  connect.
+- Each side accepts only the kinds of message meant for it, and there are
+  limits on message floods and message size.
+
+**Privacy**
+- The privacy policy describes what a relay can see: the device's IP address,
+  a random key per paired device, and the timing and size of sealed notes.
+
 ## 1.0.4 (build 47)
 
 Changes since 1.0.3. A security update, after a review of the app, its

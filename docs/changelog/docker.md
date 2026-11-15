@@ -2,6 +2,31 @@
 
 Newest first. The self-hosted server image (`ghcr.io/pressf4me/tawny`).
 
+## 2.2.13
+
+Changes since 2.2.12. Same web client as Tawny for Android 1.0.5 (build 48, 85f235b).
+
+**New**
+- The box runs its own meeting point: a small Nostr relay at `/relay`. It
+  carries only Tawny's sealed notes, stores nothing, and hands a note only to
+  the device it is addressed to.
+- Devices find each other through relays first (the box's own, plus three
+  public ones), with the box's signalling as the backup. The home-network
+  route is now optional.
+- /setup is now "Tawny server": the steps, what the box runs, and a live test
+  of every meeting point from your browser.
+- New settings: `TAWNY_RELAY`, `TAWNY_NOSTR_RELAYS`, `TAWNY_NOSTR_MODE`, and
+  `TAWNY_ONLY_THIS_BOX=on`, which pairs through this box and nowhere else.
+
+**Security**
+- A pairing code is refused once it has expired, or if the Monitor never
+  showed it.
+
+**Upgrading**
+- `docker compose pull && docker compose up -d`. No setting has to change;
+  with none of the new ones set, public relays are used alongside the box's.
+  Set `TAWNY_NOSTR_RELAYS=off` to keep everything on the box.
+
 ## 2.2.12
 
 Changes since 2.2.11. A security update. Same web client as 2.2.11.
