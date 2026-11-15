@@ -41,6 +41,36 @@ fun localOrProject(key: String): String? =
     localProps.getProperty(key) ?: (project.findProperty(key) as String?)
 val rendezvousUrl = localOrProject("tawny.rendezvousUrl").orEmpty()
 val turnMode = localOrProject("tawny.turnMode") ?: "auto"
+// Nostr relays every build meets on (public/nostr/transport.js), Nostr first
+// with the rendezvous as the backup. Checked 2026-11-13 to carry ephemeral
+// gift wraps (kind 21059) round trip; damus.io, nos.lol and nostr.mom refuse
+// them and offchain.pub admits only its web of trust. Users can replace the
+// list on the Servers screen. Override per build:
+//   tawny.nostrRelays=wss://a.example,wss://b.example   (empty = no Nostr)
+//   tawny.nostrMode=prefer|only|off
+val nostrRelays = (localOrProject("tawny.nostrRelays")
+    ?: "wss://relay.primal.net,wss://relay.nostr.net,wss://relay.snort.social")
+    .split(",").map { it.trim() }.filter { it.matches(Regex("^wss?://[^\\s\"]+$")) }
+val nostrMode = localOrProject("tawny.nostrMode")?.trim()?.takeIf { it in listOf("prefer", "only", "off") } ?: "prefer"
+
+// Tawny DevOps: the `devops` build signals over Nostr only, through the relay
+// and wire tap in Tawny DevOps/nostr-signaling-demo (./run.sh --lan). The
+// phone reaches it through `adb reverse tcp:7447 tcp:7447`, so 127.0.0.1 is
+// right for both the phone and the desktop build. Override per machine with
+//   tawny.devops.nostrRelays=ws://192.168.1.50:7447/relay   (comma list)
+//   tawny.devops.nostrMirror=http://192.168.1.50:7447/mirror
+val devopsNostrRelays = (localOrProject("tawny.devops.nostrRelays") ?: "ws://127.0.0.1:7447/relay")
+    .split(",").map { it.trim() }.filter { it.matches(Regex("^wss?://[^\\s\"]+$")) }
+val devopsNostrMirror = (localOrProject("tawny.devops.nostrMirror") ?: "http://127.0.0.1:7447/mirror")
+    .trim().takeIf { it.matches(Regex("^https?://[^\\s\"]+$")) }.orEmpty()
+// What the page's connect-src must add for those: scheme://host:port, deduped.
+val devopsNostrHosts = (devopsNostrRelays + listOf(devopsNostrMirror))
+    .filter { it.isNotEmpty() }
+    .map { Regex("^(wss?|https?)://([^/]+)").find(it)!!.let { m ->
+        val scheme = m.groupValues[1]
+        if (scheme == "ws" || scheme == "http") "ws://${m.groupValues[2]}" else m.groupValues[2] } }
+    .distinct()
+
 val stunUrls = localOrProject("tawny.stunUrls")
     ?: if (rendezvousUrl.isNotEmpty())
         "stun:stun.cloudflare.com:3478,stun:stun.l.google.com:19302" else ""
@@ -57,6 +87,10 @@ android {
         versionName = appVersionName
 
         buildConfigField("String", "RENDEZVOUS_URL", "\"$rendezvousUrl\"")
+        // The build's Nostr relays (comma list); the Servers screen can replace them.
+        buildConfigField("String", "NOSTR_RELAYS", "\"${nostrRelays.joinToString(",")}\"")
+        // Extra connect-src hosts beyond the relays; only devops has one (its mirror).
+        buildConfigField("String", "NOSTR_HOSTS", "\"\"")
     }
 
     buildFeatures {
@@ -114,6 +148,18 @@ android {
         // with ours could never update (or be updated by) the Play install.
         // As com.tawny.monitor.github it sits beside it as "Tawny (GitHub)".
         // `./gradlew :app:assembleGithub`; tools/tawny-github-apk files it.
+        // Tawny DevOps: a debug build that installs beside Tawny as its own app
+        // ("Tawny DevOps", com.tawny.monitor.devops) and signals over Nostr
+        // only, so every handshake can be watched in the inspector. Never
+        // shipped. `./gradlew :app:assembleDevops`.
+        create("devops") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".devops"
+            versionNameSuffix = "-devops"
+            matchingFallbacks += listOf("debug")
+            buildConfigField("String", "NOSTR_RELAYS", "\"${devopsNostrRelays.joinToString(",")}\"")
+            buildConfigField("String", "NOSTR_HOSTS", "\"${devopsNostrHosts.joinToString(",")}\"")
+        }
         create("github") {
             initWith(getByName("release"))
             applicationIdSuffix = ".github"
@@ -167,6 +213,21 @@ dependencies {
 
 // The native shell serves the web app from the APK, so there is no address to
 // type. Keep assets/web/ in sync with the shared public/ folder at build time.
+/** The `nostr` block of config.json, or "" for none. */
+fun nostrJson(relays: List<String>, mode: String, mirror: String = ""): String {
+    if (relays.isEmpty() || mode == "off") return ""
+    val list = relays.joinToString(",") { "\"$it\"" }
+    val mirrorPart = if (mirror.isNotEmpty()) ",\"mirror\":\"$mirror\"" else ""
+    return "{\"relays\":[$list],\"mode\":\"$mode\"$mirrorPart}"
+}
+
+/** config.json, as every build writes it. */
+fun webConfigJson(nostr: String): String {
+    val stunJson = stunUrls.split(",").map { it.trim() }.filter { it.isNotEmpty() }.joinToString(",") { "\"$it\"" }
+    val tail = if (nostr.isNotEmpty()) ",\"nostr\":$nostr" else ""
+    return "{\"stun\":[$stunJson],\"rendezvous\":\"$rendezvousUrl\",\"turnMode\":\"$turnMode\",\"authRequired\":false$tail}"
+}
+
 val syncWebAssets by tasks.registering(Copy::class) {
     // README.md: public/sounds/ documents which chime clips are still
     // placeholders, which is for whoever replaces them, not for the APK.
@@ -177,14 +238,33 @@ val syncWebAssets by tasks.registering(Copy::class) {
     }
     into(layout.projectDirectory.dir("src/main/assets/web"))
     doLast {
-        val stunJson = stunUrls.split(",")
-            .map { it.trim() }.filter { it.isNotEmpty() }
-            .joinToString(",") { "\"$it\"" }
         layout.projectDirectory.file("src/main/assets/web/config.json").asFile.writeText(
-            """{"stun":[$stunJson],"rendezvous":"$rendezvousUrl","turnMode":"$turnMode","authRequired":false}"""
+            webConfigJson(nostrJson(nostrRelays, nostrMode))
         )
     }
 }
 tasks.matching { it.name.startsWith("merge") && it.name.contains("Assets") }
     .configureEach { dependsOn(syncWebAssets) }
 tasks.named("preBuild") { dependsOn(syncWebAssets) }
+
+// The devops build's config.json: the main one plus the Nostr block. Its own
+// asset folder outranks main's for the same path, so only devops sees it.
+val devopsAssetsDir = layout.buildDirectory.dir("generated/devopsAssets")
+val devopsWebConfig by tasks.registering {
+    dependsOn(syncWebAssets)
+    val out = devopsAssetsDir.map { it.file("web/config.json") }
+    outputs.file(out)
+    inputs.property("relays", devopsNostrRelays)
+    inputs.property("mirror", devopsNostrMirror)
+    inputs.property("rendezvous", rendezvousUrl)
+    inputs.property("stun", stunUrls)
+    doLast {
+        out.get().asFile.apply {
+            parentFile.mkdirs()
+            writeText(webConfigJson(nostrJson(devopsNostrRelays, "only", devopsNostrMirror)))
+        }
+    }
+}
+android.sourceSets.getByName("devops").assets.srcDir(file("build/generated/devopsAssets"))   // a plain path: AGP refuses a Provider here
+tasks.matching { it.name.startsWith("merge") && it.name.contains("Devops") && it.name.contains("Assets") }
+    .configureEach { dependsOn(devopsWebConfig) }
