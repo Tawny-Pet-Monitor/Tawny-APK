@@ -39,7 +39,14 @@ data class Pairing(
      * is not adoptable is still parsed and still reported — it just does not
      * get to rewrite the Servers screen.
      */
-    val relayTrusted: Boolean = false
+    val relayTrusted: Boolean = false,
+    /**
+     * The Monitor's Nostr public key from `np` (64 hex characters), when the
+     * link carried one. Public: it tells this phone where to meet the Monitor
+     * on the relays and opens nothing. null on links from before Monitors had
+     * their own key; the Monitor then hands it over on the first session.
+     */
+    val nostrStation: String? = null
 ) {
     /**
      * Stale past any plausible clock disagreement. [expiresAt] was written by
@@ -72,6 +79,7 @@ object PairLink {
     private val KEY_RE = Regex("^[A-Za-z0-9_-]{16,64}$")
     private val TOKEN_RE = Regex("^[A-Za-z0-9_-]{8,64}$")
     private val CODE_RE = Regex("^[A-Za-z0-9_-]{8,32}$")
+    private val NOSTR_PUB_RE = Regex("^[0-9a-f]{64}$")
     private val HOST_PORT_RE = Regex("^\\d{1,3}(\\.\\d{1,3}){3}:\\d{2,5}$")
 
     /**
@@ -149,7 +157,8 @@ object PairLink {
             ?: "Pet camera"
         val code = q["c"]?.takeIf { CODE_RE.matches(it) }
         val exp = q["e"]?.toLongOrNull()?.takeIf { it > 0 }?.times(1000) ?: 0L
-        return Pairing(h?.let { "ws://$it" }, key, name, token, code, exp, relay, trusted)
+        val np = q["np"]?.lowercase()?.takeIf { NOSTR_PUB_RE.matches(it) }
+        return Pairing(h?.let { "ws://$it" }, key, name, token, code, exp, relay, trusted, np)
     }
 
     /** Control characters, line/paragraph separators, and bidi overrides/isolates. */
