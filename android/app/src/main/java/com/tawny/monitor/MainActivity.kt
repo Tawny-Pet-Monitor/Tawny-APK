@@ -801,6 +801,8 @@ class MainActivity : AppCompatActivity() {
             .apply { if (p.signal != null) putString("signalUrl", p.signal) else remove("signalUrl") }
             .apply { if (p.token != null) putString("pairToken", p.token) else remove("pairToken") }
             .apply { if (p.code != null) putString("pairCode", p.code) else remove("pairCode") }
+            // The Monitor's Nostr public key, handed to the page once (it keeps it).
+            .apply { if (p.nostrStation != null) putString("pairNostr", p.nostrStation) else remove("pairNostr") }
             .apply { if (adoptRelay != null) putString(PREF_RENDEZVOUS, adoptRelay) }
             .putString("channelKey", p.key)
             .putString("channelName", p.name)
@@ -3077,8 +3079,11 @@ class MainActivity : AppCompatActivity() {
             putString("channelName", petName)
             if (role == "station") {
                 if (token != null) putString("myToken", token) else remove("myToken")
-                remove("pairToken"); remove("signalUrl")
+                remove("pairToken"); remove("signalUrl"); remove("pairNostr")
             } else {
+                // The page already keeps this session's Monitor key; the one in
+                // prefs belongs to whichever code was scanned last.
+                remove("pairNostr")
                 if (token != null) putString("pairToken", token) else remove("pairToken")
                 remove("myToken")
                 if (signalUrl != null) putString("signalUrl", signalUrl) else remove("signalUrl")
@@ -5112,6 +5117,7 @@ class MainActivity : AppCompatActivity() {
             .putString("role", "station")
             .remove("signalUrl")
             .remove("pairToken")
+            .remove("pairNostr")
             .apply()
         // Go straight into the live station view — camera on, joined to the
         // relay room — with the pairing QR as an overlay until a Handheld
@@ -5537,7 +5543,31 @@ class MainActivity : AppCompatActivity() {
             if (token != null) append("&t=${Uri.encode(token)}")
             append("&c=${Uri.encode(currentPairCode())}")
             append("&e=${pairCodeExp / 1000}")
+            stationNostrPub(key)?.let { append("&np=$it") }
         }
+
+    /**
+     * This Monitor's Nostr public key for [key]'s channel, as the page last
+     * reported it (Bridge "nostrKey"). The key pair lives in the page; only the
+     * public half is kept here, for the QR. null until the page has said.
+     */
+    private fun stationNostrPub(key: String): String? =
+        prefs.getString("stationNostrPub", null)
+            ?.takeIf { prefs.getString("stationNostrPubFor", null) == key && NOSTR_PUB_RE.matches(it) }
+
+    /** The page told us its Monitor key: keep it, and redraw a QR that lacks it. */
+    private fun onStationNostrPub(pub: String) {
+        val key = prefs.getString("channelKey", null) ?: return
+        if (prefs.getString("role", null) != "station" || !NOSTR_PUB_RE.matches(pub)) return
+        if (stationNostrPub(key) == pub) return
+        prefs.edit().putString("stationNostrPub", pub).putString("stationNostrPubFor", key).apply()
+        val payload = rebuildPairPayload?.invoke() ?: return
+        pairPayloadNow = payload
+        drawPairQr(payload)
+        showPairLink(payload)
+    }
+
+    private val NOSTR_PUB_RE = Regex("^[0-9a-f]{64}$")
 
     // Pairing and the rules for reading a link now live in PairLink.kt, with no
     // Android in them, so they can be unit-tested — an Activity cannot be stood
@@ -5836,6 +5866,7 @@ class MainActivity : AppCompatActivity() {
                         "myName:${jsStr(myName())}," +
                         "lang:${jsStr(currentLang())}," +
                         "pairCode:${pairCodeArg?.let { jsStr(it) } ?: "null"}," +
+                        "nostrStation:${(if (role == "station") null else prefs.getString("pairNostr", null))?.let { jsStr(it) } ?: "null"}," +
                         "pairExp:$pairCodeExpArg,servers:${serversJson()}})",
                     null
                 )
@@ -6626,7 +6657,7 @@ class MainActivity : AppCompatActivity() {
                 prefs.edit()
                     .remove("channelKey").remove("channelName")
                     .remove("role").remove(PARKED_ROLE).remove("myToken").remove("pairToken")
-                    .remove("signalUrl")
+                    .remove("signalUrl").remove("pairNostr")
                     .apply()
                 stopServers()
                 backToSessionsOrWelcome()
@@ -6793,6 +6824,8 @@ class MainActivity : AppCompatActivity() {
                     // The first-call walkthrough was shown for this role.
                     // Each Nostr relay's verdict from the page's own test.
                     "relays" -> obj.optJSONArray("relays")?.let { saveNostrHealth(it) }
+                    // The Monitor page's Nostr public key, for the pairing QR.
+                    "nostrKey" -> onStationNostrPub(obj.optString("pub"))
                     "coachDone" -> {
                         val r = obj.optString("role")
                         if (r == "viewer" || r == "station") {

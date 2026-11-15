@@ -2,6 +2,7 @@ package com.tawny.monitor
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -288,5 +289,36 @@ class PairLinkTest {
     fun `an explicit port on a web link is carried into the relay`() {
         val p = parse("https://tawny.ainu-anoles.ts.net:8443/#k=GpgOcJxe4H6eAhLZpgZ72w")!!
         assertEquals("wss://tawny.ainu-anoles.ts.net:8443", p.relay)
+    }
+
+    // The Monitor's Nostr public key (`np`): public, optional, and only ever
+    // 64 lowercase hex characters by the time it leaves the parser.
+
+    @Test
+    fun `np is read from an app link and from a web link`() {
+        val np = "a".repeat(63) + "1"
+        val app = parse("tawny://pair?k=abcdefghijklmnop1234&n=Cam&h=192.168.1.20:8443&c=abcdefgh&np=$np")
+        assertEquals(np, app?.nostrStation)
+        val web = parse("https://tawny.example.ts.net/#k=abcdefghijklmnop1234&n=Cam&r=viewer&c=abcdefgh&np=$np")
+        assertEquals(np, web?.nostrStation)
+    }
+
+    @Test
+    fun `np in capitals is taken as the same key`() {
+        val np = "AB".repeat(32)
+        val p = parse("tawny://pair?k=abcdefghijklmnop1234&h=192.168.1.20:8443&np=$np")
+        assertEquals(np.lowercase(), p?.nostrStation)
+    }
+
+    @Test
+    fun `a link without np, or with a malformed one, still pairs`() {
+        val none = parse("tawny://pair?k=abcdefghijklmnop1234&h=192.168.1.20:8443")
+        assertNotNull(none)
+        assertNull(none?.nostrStation)
+        for (bad in listOf("abc", "g".repeat(64), "a".repeat(65), "a".repeat(63) + "%22")) {
+            val p = parse("tawny://pair?k=abcdefghijklmnop1234&h=192.168.1.20:8443&np=$bad")
+            assertNotNull("still a pairing: $bad", p)
+            assertNull("np refused: $bad", p?.nostrStation)
+        }
     }
 }
