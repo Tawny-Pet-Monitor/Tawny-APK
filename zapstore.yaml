@@ -52,8 +52,10 @@ description: |
   Tawny streams only while the app is open on both phones. It is a pet
   monitor: please don't rely on it as a baby monitor or a security device.
 
-  This is the GitHub edition. It installs beside the Google Play app, and
-  their pairings are separate.
+  This is the GitHub edition: the Google Play app's code, which carries
+  Google Play's rating prompt library (it never shows without Play). It
+  installs beside the Play app, and their pairings are separate. Want no
+  Google library at all? Install Tawny (FOSS) instead.
 license: MIT
 website: https://github.com/Tawny-Pet-Monitor/Tawny-APK
 tags: [nostr, pets, camera, monitor, webrtc, privacy]
