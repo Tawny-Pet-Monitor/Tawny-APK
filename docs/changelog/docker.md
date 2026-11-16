@@ -1,6 +1,7 @@
 # Tawny Docker — changelog
 
-Newest first. The self-hosted server image (`ghcr.io/pressf4me/tawny`).
+Newest first. The self-hosted server image (`ghcr.io/tawny-pet-monitor/tawny`;
+`ghcr.io/pressf4me/tawny` up to 2.2.12).
 
 ## 2.2.13
 
@@ -23,6 +24,9 @@ Changes since 2.2.12. Same web client as Tawny for Android 1.0.5 (build 48, 85f2
   showed it.
 
 **Upgrading**
+- The image moved to `ghcr.io/tawny-pet-monitor/tawny`. The old name,
+  `ghcr.io/pressf4me/tawny`, stops at 2.2.12. Change the `image:` line in your
+  compose file (or `TAWNY_IMAGE`) first; your data and settings are kept.
 - `docker compose pull && docker compose up -d`. No setting has to change;
   with none of the new ones set, public relays are used alongside the box's.
   Set `TAWNY_NOSTR_RELAYS=off` to keep everything on the box.
