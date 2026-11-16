@@ -16,6 +16,11 @@ Video and audio go **peer to peer over WebRTC**, encrypted end to end
 (DTLS-SRTP). On your home Wi-Fi nothing leaves the house: one of your phones does
 the job a server would.
 
+**Away from home, the two phones find each other over [Nostr](https://github.com/nostr-protocol/nips).**
+They leave each other sealed notes on ordinary Nostr relays, so pairing does
+not depend on any one company's server, and you can point Tawny at your own
+relays, or at only your own. See [Nostr](#-nostr) below.
+
 <p align="center">
   <img src="docs/media/screenshot-01.jpg" width="200" alt="Your pet, live on your phone">
   <img src="docs/media/screenshot-02.jpg" width="200" alt="Pair with one photo">
@@ -55,12 +60,46 @@ else asking for money in Tawny's name isn't us.
 
 ---
 
+## 🟣 Nostr
+
+From 1.0.5 (GitHub and Zapstore) and 1.0.11 (F-Droid), Tawny uses Nostr to
+introduce the two devices when they are not on the same Wi-Fi. Google Play
+follows once it has been through review there.
+
+- **What goes over the relays:** only the introduction, the handful of notes
+  two devices need to set up a call. Never video or audio; those go straight
+  between the devices.
+- **Sealed.** Every note is a gift wrap (NIP-59) encrypted with NIP-44, so a
+  relay sees an envelope and nothing inside it: no names, no pairing key, no
+  connection details. The notes are ephemeral (kind 21059) and are not stored.
+- **Each relay is tested first.** Before a relay is used, the device sends
+  itself one sealed note through it and waits for it to come back. A relay
+  that refuses or swallows it is left out.
+- **Your own relays.** Diagnostics → Servers → Nostr relays replaces the
+  built-in list (`relay.primal.net`, `relay.nostr.net`, `relay.snort.social`).
+  **Use only my relays** pairs through yours and nothing else: no public
+  relay, no rendezvous. It is tested from the phone and asks you to confirm
+  before it switches on.
+- **The Monitor has its own key.** It is random, made on the Monitor and
+  never leaves it. The pairing QR carries only the public half, so an old
+  photo of a QR can neither read what phones send the Monitor nor pose as it.
+- **A backup stays.** If no relay delivers, the rendezvous service is used
+  instead, exactly as before. Same Wi-Fi never needs either.
+
+Tawny is on [Zapstore](https://zapstore.dev/apps/com.tawny.monitor.github),
+the Nostr app store, signed by the developer's own key. Tips in Bitcoin are
+zaps, and the thank-you appears when the zap receipt arrives.
+
+What a relay can and cannot see is spelled out in the
+[privacy policy](privacy-policy.md).
+
 ## 🔍 How it connects
 
 | Situation | Path | Server involved |
 |---|---|---|
 | Both phones on the same Wi-Fi | The Monitor runs a tiny signalling relay on the LAN; the Viewer connects straight to it. | none — it's the Monitor phone |
-| Phones on different networks *(optional build)* | Both phones dial **out** to a small **rendezvous** service that only introduces them. If they can't reach each other directly, an encrypted **TURN** relay forwards the media (it can't read it). | one small always-on service — the Play build uses the developer's; self-hosting it lives in the Tawny Docker repo (not public yet) |
+| Phones on different networks | The phones leave each other **sealed notes on Nostr relays** to introduce themselves, then connect directly. | public Nostr relays, or your own; they see envelopes only |
+| Phones on different networks, when no relay delivers | Both phones dial **out** to a small **rendezvous** service that only introduces them. If they can't reach each other directly, an encrypted **TURN** relay forwards the media (it can't read it). | one small always-on service — the Play build uses the developer's; self-hosting it lives in the Tawny Docker repo (not public yet) |
 
 No inbound ports are opened on either phone in any configuration.
 
