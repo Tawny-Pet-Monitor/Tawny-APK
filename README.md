@@ -86,8 +86,12 @@ follows once it has been through review there.
 - **A backup stays.** If no relay delivers, the rendezvous service is used
   instead, exactly as before. Same Wi-Fi never needs either.
 
-Tawny is on [Zapstore](https://zapstore.dev/apps/com.tawny.monitor.github),
-the Nostr app store, signed by the developer's own key. Tips in Bitcoin are
+Tawny is on Zapstore, the Nostr app store, signed by the developer's own key,
+in two editions:
+[**Tawny (FOSS)**](https://zapstore.dev/apps/com.tawny.monitor.foss), the
+F-Droid build with no Google library at all, and
+[**Tawny (GitHub)**](https://zapstore.dev/apps/com.tawny.monitor.github), the
+Play app's code. Tips in Bitcoin are
 zaps, and the thank-you appears when the zap receipt arrives.
 
 What a relay can and cannot see is spelled out in the
