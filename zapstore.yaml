@@ -1,0 +1,72 @@
+# Tawny (FOSS) on Zapstore. Read by `zsp` (https://zapstore.dev/docs/publish).
+#
+# The APK is the F-Droid edition built as its own app (com.tawny.monitor.foss,
+# `./gradlew :app:assembleFoss`), attached to each foss-vX.Y.Z GitHub release.
+# The GitHub edition (com.tawny.monitor.github) has its own zapstore.yaml on
+# master. Signing keys and SIGN_WITH never go in this file or in Git.
+repository: https://github.com/Tawny-Pet-Monitor/Tawny-APK
+release_filter: '^foss-v[0-9]+\.[0-9]+\.[0-9]+$'
+match: 'foss\.apk$'
+
+name: Tawny (FOSS)
+summary: A private, Google-free pet camera on two phones that pairs over Nostr. Watch, listen, and talk back.
+description: |
+  Tawny turns two phones into a cosy little pet monitor.
+
+  Leave one phone with your pet; an old handset on a charger is perfect. It
+  becomes the **Monitor**: it points its camera at the room and sends the
+  picture and the sound. Keep the other phone with you as the **Viewer**:
+  watch, listen in, hold a button to talk back, or play a gentle chime.
+
+  **Built on Nostr.** Away from home, the two phones find each other through
+  Nostr relays instead of a company's server. Every note they exchange is a
+  sealed gift wrap (NIP-59, NIP-44), so a relay sees an envelope and nothing
+  inside it, and each relay is tested before it is used. Use your own relays,
+  or only your own relays. Video and audio never touch a relay; they go
+  straight between your phones.
+
+  **Setting up is a photo.** The Monitor shows a code. Point the other phone's
+  camera at it. No account, no sign-up, no cloud login, no address to type.
+
+  **It stays private.** On your home Wi-Fi nothing leaves the house. Video and
+  audio travel straight between your devices, encrypted end to end. No ads, no
+  analytics, no tracking.
+
+  **When you're out.** If no Nostr relay delivers, Tawny's own rendezvous
+  service is the backup. When two networks won't connect directly, an
+  encrypted relay forwards the stream without being able to read it.
+
+  **What you get**
+  - Pairing over Nostr, with your own relays if you like
+  - Tips in Bitcoin are zaps
+  - Live video and two-way audio, with hold-to-talk
+  - Call your pet over with a squeaky toy, a meow, a "good boy" or a bell
+  - Dim mode, front and rear camera, zoom, snapshot, and the Monitor's light
+  - Up to three Viewers on one Monitor
+  - A short safety code to compare when you connect from away
+  - Light and dark themes, English and Spanish
+
+  Tawny streams only while the app is open on both phones. It is a pet
+  monitor: please don't rely on it as a baby monitor or a security device.
+
+  This is the FOSS edition, the same build F-Droid ships, with no Google
+  library at all. It installs as "Tawny (FOSS)", beside the Google Play app and
+  the GitHub edition; pairings are not shared between them.
+
+license: MIT
+website: https://github.com/Tawny-Pet-Monitor/Tawny-APK/tree/foss
+tags: [nostr, pets, camera, monitor, webrtc, privacy, foss]
+
+icon: ./fastlane/metadata/android/en-US/images/icon.png
+images:
+  - ./fastlane/metadata/android/en-US/images/phoneScreenshots/1.png
+  - ./fastlane/metadata/android/en-US/images/phoneScreenshots/2.png
+  - ./fastlane/metadata/android/en-US/images/phoneScreenshots/3.png
+  - ./fastlane/metadata/android/en-US/images/phoneScreenshots/4.png
+  - ./fastlane/metadata/android/en-US/images/phoneScreenshots/5.png
+  - ./fastlane/metadata/android/en-US/images/phoneScreenshots/6.png
+  - ./fastlane/metadata/android/en-US/images/phoneScreenshots/7.png
+release_notes: ./fastlane/metadata/android/en-US/changelogs/53.txt
+
+supported_nips: ["01", "40", "42", "44", "59"]
+metadata_sources: []
