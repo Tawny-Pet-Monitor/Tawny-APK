@@ -1,0 +1,67 @@
+# Tawny on Zapstore. Read by `zsp` (https://zapstore.dev/docs/publish).
+#
+# The APK is the GitHub edition (com.tawny.monitor.github), attached to each
+# vX.Y.Z release of this repository by tools/tawny-github-apk. The F-Droid
+# edition's foss-v* tags are left out by release_filter.
+#
+# To publish a new version: publish the GitHub release, update
+# docs/zapstore-release-notes.md, then run `zsp publish` here with
+# SIGN_WITH set. Signing keys and SIGN_WITH never go in this file or in Git.
+repository: https://github.com/Tawny-Pet-Monitor/Tawny-APK
+release_filter: '^v[0-9]+\.[0-9]+\.[0-9]+$'
+match: 'github\.apk$'
+
+name: Tawny
+summary: Turn two phones into a private pet camera. Watch, listen, and talk back.
+description: |
+  Tawny turns two phones into a cosy little pet monitor.
+
+  Leave one phone with your pet; an old handset on a charger is perfect. It
+  becomes the **Monitor**: it points its camera at the room and sends the
+  picture and the sound. Keep the other phone with you as the **Viewer**:
+  watch, listen in, hold a button to talk back, or play a gentle chime.
+
+  **Setting up is a photo.** The Monitor shows a code. Point the other phone's
+  camera at it. No account, no sign-up, no cloud login, no address to type.
+
+  **It stays private.** On your home Wi-Fi nothing leaves the house. Video and
+  audio travel straight between your devices, encrypted end to end. No ads, no
+  analytics, no tracking.
+
+  **When you're out.** The two phones find each other through Nostr relays,
+  using sealed notes that only the other phone can open, with Tawny's own
+  rendezvous service as the backup. You can use your own relays, or only your
+  own relays. When two networks won't connect directly, an encrypted relay
+  forwards the stream without being able to read it.
+
+  **What you get**
+  - Live video and two-way audio, with hold-to-talk
+  - Call your pet over with a squeaky toy, a meow, a "good boy" or a bell
+  - Dim mode, front and rear camera, zoom, snapshot, and the Monitor's light
+  - Up to three Viewers on one Monitor
+  - A short safety code to compare when you connect from away
+  - Light and dark themes, English and Spanish
+
+  Tawny streams only while the app is open on both phones. It is a pet
+  monitor: please don't rely on it as a baby monitor or a security device.
+
+  This is the GitHub edition. It installs beside the Google Play app, and
+  their pairings are separate.
+license: MIT
+website: https://github.com/Tawny-Pet-Monitor/Tawny-APK
+tags: [pets, camera, monitor, webrtc, privacy, nostr]
+
+icon: ./docs/play-icon-512.png
+images:
+  - ./docs/media/screenshot-01.jpg
+  - ./docs/media/screenshot-02.jpg
+  - ./docs/media/screenshot-03.jpg
+  - ./docs/media/screenshot-04.jpg
+  - ./docs/media/screenshot-05.jpg
+  - ./docs/media/screenshot-06.jpg
+  - ./docs/media/screenshot-07.jpg
+  - ./docs/media/screenshot-08.jpg
+release_notes: ./docs/zapstore-release-notes.md
+
+supported_nips: ["01", "40", "42", "44", "59"]
+metadata_sources: []

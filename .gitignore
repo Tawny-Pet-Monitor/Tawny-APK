@@ -47,3 +47,6 @@ node_modules/
 
 # Original chime recordings: not redistributable as loose files (see public/sounds/README.md).
 public/sounds/_src/
+
+# Zapstore signing (SIGN_WITH) lives in .env on the publishing machine only.
+.env
