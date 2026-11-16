@@ -12,7 +12,7 @@ release_filter: '^v[0-9]+\.[0-9]+\.[0-9]+$'
 match: 'github\.apk$'
 
 name: Tawny
-summary: Turn two phones into a private pet camera. Watch, listen, and talk back.
+summary: A private pet camera on two phones that pairs over Nostr. Watch, listen, and talk back.
 description: |
   Tawny turns two phones into a cosy little pet monitor.
 
@@ -21,6 +21,13 @@ description: |
   picture and the sound. Keep the other phone with you as the **Viewer**:
   watch, listen in, hold a button to talk back, or play a gentle chime.
 
+  **Built on Nostr.** Away from home, the two phones find each other through
+  Nostr relays instead of a company's server. Every note they exchange is a
+  sealed gift wrap (NIP-59, NIP-44), so a relay sees an envelope and nothing
+  inside it, and each relay is tested before it is used. Use your own relays,
+  or only your own relays. Video and audio never touch a relay; they go
+  straight between your phones.
+
   **Setting up is a photo.** The Monitor shows a code. Point the other phone's
   camera at it. No account, no sign-up, no cloud login, no address to type.
 
@@ -28,13 +35,13 @@ description: |
   audio travel straight between your devices, encrypted end to end. No ads, no
   analytics, no tracking.
 
-  **When you're out.** The two phones find each other through Nostr relays,
-  using sealed notes that only the other phone can open, with Tawny's own
-  rendezvous service as the backup. You can use your own relays, or only your
-  own relays. When two networks won't connect directly, an encrypted relay
-  forwards the stream without being able to read it.
+  **When you're out.** If no Nostr relay delivers, Tawny's own rendezvous
+  service is the backup. When two networks won't connect directly, an
+  encrypted relay forwards the stream without being able to read it.
 
   **What you get**
+  - Pairing over Nostr, with your own relays if you like
+  - Tips in Bitcoin are zaps
   - Live video and two-way audio, with hold-to-talk
   - Call your pet over with a squeaky toy, a meow, a "good boy" or a bell
   - Dim mode, front and rear camera, zoom, snapshot, and the Monitor's light
@@ -49,7 +56,7 @@ description: |
   their pairings are separate.
 license: MIT
 website: https://github.com/Tawny-Pet-Monitor/Tawny-APK
-tags: [pets, camera, monitor, webrtc, privacy, nostr]
+tags: [nostr, pets, camera, monitor, webrtc, privacy]
 
 icon: ./docs/play-icon-512.png
 images:
