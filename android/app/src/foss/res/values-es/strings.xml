@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="whatsnew_notes">
+        <item>Nuevo: tus dispositivos ahora se encuentran primero a través de relés Nostr, con el servicio de Tawny como respaldo, así que emparejar ya no depende de un solo servidor</item>
+        <item>Nuevo en Servidores: usa tus propios relés, mira cuáles funcionan o usa solo los tuyos</item>
+        <item>Seguridad: un código de emparejamiento caducado, o un código QR antiguo, ya no sirve para conectarse</item>
+    </string-array>
+</resources>

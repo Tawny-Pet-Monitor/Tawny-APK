@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The F-Droid edition as its own app, beside the Play and GitHub ones: tell them apart. -->
+    <string name="app_name" translatable="false">Tawny (FOSS)</string>
+    <string-array name="whatsnew_notes">
+        <item>New: your devices now find each other through Nostr relays first, with Tawny\'s own service as the backup, so pairing no longer depends on one server</item>
+        <item>New in Servers: use your own relays, see which ones work, or use only your relays</item>
+        <item>Security: an expired pairing code, or an old QR code, can no longer be used to connect</item>
+    </string-array>
+</resources>

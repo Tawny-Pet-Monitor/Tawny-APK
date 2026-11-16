@@ -165,6 +165,16 @@ android {
             applicationIdSuffix = ".github"
             matchingFallbacks += listOf("release")
         }
+        // The F-Droid edition's own APK for Zapstore (and its GitHub release):
+        // the same code and upload key, with no Google library at all. Its own
+        // app id, so it installs beside the Play app and the GitHub edition,
+        // which are already listed under theirs: "Tawny (FOSS)",
+        // com.tawny.monitor.foss. `./gradlew :app:assembleFoss`.
+        create("foss") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".foss"
+            matchingFallbacks += listOf("release")
+        }
     }
 
     compileOptions {
