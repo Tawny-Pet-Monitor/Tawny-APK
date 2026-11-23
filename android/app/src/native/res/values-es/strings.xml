@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Español latinoamericano, como el resto de la app: "teléfono", no "móvil";
+     "monitor" y "visor" son los dos roles. -->
+<resources>
+    <string name="monitor_channel">Monitoreo</string>
+    <string name="monitor_channel_about">Aparece mientras este teléfono es el monitor, con un botón para detenerlo.</string>
+    <string name="monitor_notice_title">Monitoreando</string>
+    <string name="monitor_notice_idle">Esperando a un visor. La cámara está apagada hasta que alguien mire.</string>
+    <string name="monitor_notice_live">Alguien está mirando. La cámara y el micrófono están encendidos.</string>
+    <string name="monitor_notice_stop">Detener</string>
+</resources>
