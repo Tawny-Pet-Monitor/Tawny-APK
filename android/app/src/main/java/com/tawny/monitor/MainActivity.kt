@@ -5154,8 +5154,18 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun startWatcher(ip: String?) = withSignalServer { sigPort ->
-        if (sigPort < 0) { relayFailed(); return@withSignalServer }
+    private fun startWatcher(ip: String?) {
+        // The native Monitor runs its own LAN relay. The shell's (the web
+        // engine's) would sit on the port the native one saved, so each start
+        // found its port taken, moved, and left two listeners on the Wi-Fi.
+        if (nativeLive() != null) { beginWatcher(); return }
+        withSignalServer { sigPort ->
+            if (sigPort < 0) { relayFailed(); return@withSignalServer }
+            beginWatcher()
+        }
+    }
+
+    private fun beginWatcher() {
         // Persist the role now so an unattended Watcher that gets killed
         // (Samsung battery, low memory) comes back as the Watcher, not the setup
         // screen. Clear any leftover Handheld state so resumeSession() can't
