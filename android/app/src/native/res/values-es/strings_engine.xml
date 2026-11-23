@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ver values/strings_engine.xml. -->
+<resources>
+    <string name="perm_disclose_cam_body">Este teléfono usará su cámara y su micrófono para transmitir a tu mascota a tu otro teléfono, también con la pantalla apagada o mientras usas otra app. La cámara y el micrófono solo se encienden mientras alguien está mirando, y se muestra todo el tiempo una notificación con un botón para detener. El video y el sonido se envían cifrados, directamente entre tus dispositivos, y nunca se graban ni se guardan en ningún lugar.</string>
+    <string name="battery_tip_body">Tawny sigue vigilando con la pantalla apagada, así que la pantalla no tiene que quedarse encendida. Tres cosas ayudan más a la batería:\n\n1.  Déjalo en un cargador.\n\n2.  Cuando esté listo, pulsa el botón de encendido para apagar la pantalla. La cámara y el micrófono solo se encienden cuando alguien mira.\n\n3.  Si prefieres ver la imagen en pantalla, toca “Atenuar pantalla”: Tawny baja la luz de fondo casi a cero y sigue transmitiendo.</string>
+    <string name="tour_4_body">Deja el Monitor en el cargador. Puedes apagar su pantalla: sigue vigilando, y la cámara solo se enciende mientras alguien está mirando.</string>
+    <string name="faq_screen_q">¿Puedo apagar la pantalla del Monitor?</string>
+    <string name="faq_screen_a">Sí. El Monitor sigue funcionando con la pantalla apagada o mientras usas otras apps, con una notificación y un botón para detenerlo todo el tiempo. La cámara y el micrófono solo se encienden mientras hay un Visor conectado.</string>
+    <string name="faq_battery_a">Déjalo en el cargador y apaga su pantalla cuando esté listo: la cámara y el micrófono solo funcionan mientras hay un Visor conectado. Si quieres ver la imagen en pantalla, pulsa “Atenuar” y la retroiluminación queda casi a oscuras mientras la transmisión sigue.</string>
+</resources>

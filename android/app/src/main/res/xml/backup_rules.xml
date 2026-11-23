@@ -3,6 +3,9 @@
      pet camera, so nothing from tawny.xml goes to the cloud. -->
 <full-backup-content>
     <exclude domain="sharedpref" path="tawny.xml" />
+    <!-- The native app's pairing secrets, sealed under a Keystore key that
+         never leaves this phone, so a copy would not open anywhere else. -->
+    <exclude domain="sharedpref" path="tawny_native.xml" />
     <exclude domain="file" path="app_webview" />
     <!-- The diagnostics log records room ids (hashes of the channel key). -->
     <exclude domain="file" path="diag.log" />

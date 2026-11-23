@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 // Upload-key signing. Create android/keystore.properties (NOT committed) with:
@@ -160,11 +161,25 @@ android {
             buildConfigField("String", "NOSTR_RELAYS", "\"${devopsNostrRelays.joinToString(",")}\"")
             buildConfigField("String", "NOSTR_HOSTS", "\"${devopsNostrHosts.joinToString(",")}\"")
         }
+        // The native app (Rust core through tawny-ffi, Compose screens), built
+        // by Tawny DevOps/tools/native-android. Installs beside the others as
+        // "Tawny Native" (com.tawny.monitor.native). Its code, the generated
+        // bindings and the per-ABI libraries live in src/native/.
+        create("native") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".native"
+            versionNameSuffix = "-native"
+            matchingFallbacks += listOf("debug")
+        }
         create("github") {
             initWith(getByName("release"))
             applicationIdSuffix = ".github"
             matchingFallbacks += listOf("release")
         }
+    }
+
+    buildFeatures {
+        compose = true
     }
 
     compileOptions {
@@ -182,6 +197,28 @@ kotlin {
 }
 
 dependencies {
+    // The native app only (build type `native`): Compose, the Rust core's
+    // bindings (UniFFI's Kotlin needs JNA) and libwebrtc's Java classes.
+    val nativeImplementation by configurations
+    nativeImplementation(platform("androidx.compose:compose-bom:2025.06.00"))
+    nativeImplementation("androidx.compose.material3:material3")
+    nativeImplementation("androidx.compose.ui:ui")
+    nativeImplementation("androidx.compose.ui:ui-tooling-preview")
+    nativeImplementation("androidx.activity:activity-compose:1.10.1")
+    nativeImplementation("androidx.lifecycle:lifecycle-service:2.9.1")
+    nativeImplementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.1")
+    nativeImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    nativeImplementation("net.java.dev.jna:jna:5.17.0@aar")
+    nativeImplementation(files("libs/libwebrtc.jar"))
+    // The Compose compiler runs on every build type (buildFeatures can't be
+    // set per type) and stops when no Compose runtime is on the classpath.
+    // Only `native` ships Compose; the others get the runtime to compile
+    // against, never packaged.
+    compileOnly(platform("androidx.compose:compose-bom:2025.06.00"))
+    compileOnly("androidx.compose.runtime:runtime")
+    testCompileOnly(platform("androidx.compose:compose-bom:2025.06.00"))
+    testCompileOnly("androidx.compose.runtime:runtime")
+
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.appcompat:appcompat:1.7.0")

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The native engine keeps the Monitor running with the screen off (a
+     camera|microphone foreground service). These replace the texts that said
+     Tawny had to stay open: the disclosure has to say so up front (Google
+     Play's prominent-disclosure rule), and the tips no longer apply. -->
+<resources>
+    <string name="perm_disclose_cam_body">This phone will use its camera and microphone to stream your pet to your other phone, including while its screen is off or you’re using another app. The camera and microphone switch on only while someone is watching, and a notification with a Stop button shows the whole time. The video and sound are sent encrypted, directly between your devices, and are never recorded or stored anywhere.</string>
+    <string name="battery_tip_body">Tawny keeps watching with the screen off, so the screen doesn’t have to stay on. Three things help the battery most:\n\n1.  Leave it on a charger.\n\n2.  Once it’s set up, press the power button to turn the screen off. The camera and microphone switch on only when someone watches.\n\n3.  If you’d rather keep the picture on screen, tap “Dim screen”: Tawny takes the backlight down to almost nothing and keeps streaming.</string>
+    <string name="tour_4_body">Keep the Monitor on a charger. You can turn its screen off: it keeps watching, and the camera switches on only while someone is looking.</string>
+    <string name="faq_screen_q">Can I turn the Monitor’s screen off?</string>
+    <string name="faq_screen_a">Yes. The Monitor keeps running with the screen off or while you use other apps, with a notification and a Stop button the whole time. The camera and microphone switch on only while a Viewer is connected.</string>
+    <string name="faq_battery_a">Keep it on a charger and turn its screen off once it’s set up: the camera and microphone only run while a Viewer is connected. If you want the picture on screen, tap “Dim screen” and the backlight goes almost completely dark while the stream keeps running.</string>
+</resources>

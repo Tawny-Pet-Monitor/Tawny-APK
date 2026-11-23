@@ -364,6 +364,10 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var root: FrameLayout
     private var web: WebView? = null
+    /** The native live page (Rust engine), in builds that bundle it; see LivePage.kt. */
+    private var livePage: LivePage? = null
+    /** The native Monitor's LAN relay port, once it is listening (event "lanPort"). */
+    private var nativeLanPort = 0
     private var pairOverlay: View? = null
     private var pairChip: View? = null      // way back to the code, over the live view
     /** The words behind the [+], revealed while a finger is on the chip. */
@@ -984,6 +988,8 @@ class MainActivity : AppCompatActivity() {
             it.destroy()
         }
         web = null
+        livePage?.let { (it.view.parent as? ViewGroup)?.removeView(it.view); it.destroy() }
+        livePage = null
         root.removeAllViews()
         // Mounted first so it sits behind whatever the caller adds next, then
         // lifted to the front once that screen is up — a screen's full-bleed
@@ -2897,13 +2903,15 @@ class MainActivity : AppCompatActivity() {
      * The shell knows the numbers; the page just needs to be told.
      */
     private fun pushSafeInsets() {
-        val w = web ?: return
+        if (web == null && livePage == null) return
         val (top, bottom) = lastInsets
         val t = if (videoIsBehindBars()) (top / d).toInt() else 0
         val b = if (videoIsBehindBars()) (bottom / d).toInt() else 0
         val (left, right) = lastSideInsets
         val l = if (videoIsBehindBars()) (left / d).toInt() else 0
         val r = if (videoIsBehindBars()) (right / d).toInt() else 0
+        livePage?.safeInsets(t, b, l, r)
+        val w = web ?: return
         w.evaluateJavascript(
             "document.documentElement.style.setProperty('--safe-t','${t}px');" +
                 "document.documentElement.style.setProperty('--safe-b','${b}px');" +
@@ -3066,6 +3074,22 @@ class MainActivity : AppCompatActivity() {
         val arr = org.json.JSONArray()
         remaining.forEach { arr.put(it) }
         prefs.edit().putString("recentSessions", arr.toString()).apply()
+    }
+
+    /**
+     * "Set up a new session": nothing of the last one carries over. Keeping
+     * its channel key made a new Monitor share the very room, and rendezvous
+     * room, of the Monitor this phone last watched. The saved sessions stay;
+     * opening one puts its own key back ([restoreSession]).
+     */
+    private fun startNewSession() {
+        prefs.edit()
+            .remove("channelKey").remove("channelName")
+            .remove("role").remove(PARKED_ROLE).remove("myToken").remove("pairToken")
+            .remove("signalUrl").remove("pairNostr")
+            .apply()
+        pairCode = null
+        showRole()
     }
 
     private fun restoreSession(session: org.json.JSONObject) {
@@ -3347,7 +3371,7 @@ class MainActivity : AppCompatActivity() {
 
         col.addView(gap(12))
         // Was pill() reimplemented by hand, at a different size and padding.
-        col.addView(ghost(getString(R.string.sessions_new)) { showRole() })
+        col.addView(ghost(getString(R.string.sessions_new)) { startNewSession() })
 
         // The only two places money is ever mentioned, both below the fold of
         // the thing the user came here to do. Deliberately not on welcome, role
@@ -5569,6 +5593,22 @@ class MainActivity : AppCompatActivity() {
 
     private val NOSTR_PUB_RE = Regex("^[0-9a-f]{64}$")
 
+    /** The native Monitor's LAN relay came up on [port]: remember it, redraw the QR. */
+    private fun onNativeLanPort(port: Int) {
+        if (port !in 1..65535 || port == nativeLanPort) return
+        nativeLanPort = port
+        prefs.edit().putInt("sigPort", port).apply()
+        val key = prefs.getString("channelKey", null) ?: return
+        val name = prefs.getString("channelName", null) ?: getString(R.string.default_pet_name)
+        val ip = if (lanPathOn()) lanIp() else null
+        val token = watcherToken()
+        rebuildPairPayload = { pairingPayload(ip, nativeLanPort, key, name, token) }
+        val payload = rebuildPairPayload?.invoke() ?: return
+        pairPayloadNow = payload
+        drawPairQr(payload)
+        showPairLink(payload)
+    }
+
     // Pairing and the rules for reading a link now live in PairLink.kt, with no
     // Android in them, so they can be unit-tested — an Activity cannot be stood
     // up in a JVM test, and every decision a stranger's QR code is allowed to
@@ -5704,6 +5744,12 @@ class MainActivity : AppCompatActivity() {
             goLiveWith(role, null)
             return
         }
+        if (role == "station" && LivePageFactory.native != null) {
+            // The Rust Monitor runs its own LAN relay; it reports the port
+            // (event "lanPort") and the QR is redrawn with it.
+            goLiveWith(role, null)
+            return
+        }
         if (role == "station") {
             withSignalServer { port ->
                 if (port < 0) { relayFailed(); return@withSignalServer }
@@ -5744,7 +5790,7 @@ class MainActivity : AppCompatActivity() {
         val ip = if (lanPathOn()) lanIp() else null   // was enumerated three times in a row, on the UI thread
         // A Monitor going live mints (or keeps) the code its QR advertises; a
         // Handheld carries the code it scanned, which the Monitor checks once.
-        val sigPort = signalServer?.boundPort ?: 0
+        val sigPort = signalServer?.boundPort ?: nativeLanPort
         rebuildPairPayload =
             if (role == "station") ({ pairingPayload(ip, sigPort, key, name, token) }) else null
         val pairPayload = rebuildPairPayload?.invoke()
@@ -5755,8 +5801,50 @@ class MainActivity : AppCompatActivity() {
             "rv=${rv.ifBlank { "NONE" }}${if (customRendezvous().isNotBlank()) " (custom)" else ""} " +
             "ticket=${if (token.isNullOrBlank()) "MISSING" else "yes"} " +
             "paircode=${if (code.isNullOrBlank()) "none" else "yes"}")
+        val native = LivePageFactory.native
+        if (native != null) {
+            showNativeLive(native, role, key, name, signal, rv, token, pairPayload, code, codeExp)
+            return
+        }
         showWeb("http://127.0.0.1:$httpPort/#native", role, key, name, signal,
             rv, token, pairPayload, code, codeExp)
+    }
+
+    /**
+     * The live screen on the native engine: the same shell around it as
+     * [showWeb] (pairing sheet, swipe-to-end), with a [LivePage] in place of
+     * the WebView.
+     */
+    private fun showNativeLive(
+        factory: LivePageFactory, role: String, key: String, name: String,
+        signal: String?, rendezvous: String, token: String?, pairPayload: String?,
+        pairCodeArg: String?, pairCodeExpArg: Long,
+    ) {
+        clearScreen()
+        val page = factory.create(this, liveShell)
+        livePage = page
+        root.addView(page.view, FrameLayout.LayoutParams(MP, MP))
+        versionView?.visibility = View.GONE
+        if (pairPayload != null) {
+            pairOverlay = buildPairOverlay(name, pairPayload)
+            root.addView(pairOverlay, FrameLayout.LayoutParams(MP, MP))
+            refreshSystemBars()
+        }
+        if (role == "station") swipeNav(back = { confirmEndCall() }, forward = null)
+        pushSafeInsets()
+        page.start(
+            LiveStart(
+                role = role, key = key, name = name, signal = signal, rendezvous = rendezvous,
+                token = token, theme = themeMode(), systemTheme = systemTheme(),
+                motion = !stillMode(), announce = announceViewers(), myName = myName(),
+                lang = currentLang(), pairCode = pairCodeArg, pairExpMs = pairCodeExpArg,
+                nostrStation = if (role == "station") null else prefs.getString("pairNostr", null),
+                servers = serversJson(),
+                lanPort = if (role == "station" && lanPathOn()) prefs.getInt("sigPort", 8820) else -1,
+                coachSeen = coachSeen(),
+            ),
+        )
+        startOrientationWatch()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -6544,6 +6632,7 @@ class MainActivity : AppCompatActivity() {
         pairPayloadNow = payload
         drawPairQr(payload)
         showPairLink(payload)
+        livePage?.pairCode(pairCode ?: "", pairCodeExp)
         web?.evaluateJavascript(
             "window.tawnyPairCode && window.tawnyPairCode(" +
                 "${jsStr(pairCode ?: "")},$pairCodeExp)", null
@@ -6749,7 +6838,36 @@ class MainActivity : AppCompatActivity() {
     inner class Bridge {
         /** Called by public/app.js as the session changes state. */
         @JavascriptInterface
-        fun post(json: String) {
+        fun post(json: String) = onPageEvent(json)
+
+        @JavascriptInterface
+        fun setDimmed(on: Boolean) = onPageDimmed(on)
+
+        @JavascriptInterface
+        fun saveImage(dataUrl: String, filename: String) =
+            saveImageBytes(Base64.decode(dataUrl.substringAfter("base64,"), Base64.DEFAULT), filename)
+
+        @JavascriptInterface
+        fun saveVideo(dataUrl: String, filename: String) {
+            val safe = filename.ifBlank { "video.webm" }
+            saveVideoBytes(
+                Base64.decode(dataUrl.substringAfter("base64,"), Base64.DEFAULT), safe,
+                if (safe.endsWith(".mp4")) "video/mp4" else "video/webm",
+            )
+        }
+    }
+
+    /** The native live page's way to the shell: the same calls as [Bridge]. */
+    private val liveShell = object : LiveShell {
+        override fun post(json: String) = onPageEvent(json)
+        override fun setDimmed(on: Boolean) = onPageDimmed(on)
+        override fun saveImage(png: ByteArray, filename: String) = saveImageBytes(png, filename)
+        override fun saveVideo(bytes: ByteArray, filename: String, mime: String) = saveVideoBytes(bytes, filename, mime)
+    }
+
+    /** An event from the live page (app.js's `post`, or the native page's). */
+    private fun onPageEvent(json: String) {
+        run {
             val obj = try { org.json.JSONObject(json) } catch (e: Exception) { return }
             val event = obj.optString("event")
             val message = obj.optString("message").ifBlank { null }
@@ -6826,6 +6944,8 @@ class MainActivity : AppCompatActivity() {
                     "relays" -> obj.optJSONArray("relays")?.let { saveNostrHealth(it) }
                     // The Monitor page's Nostr public key, for the pairing QR.
                     "nostrKey" -> onStationNostrPub(obj.optString("pub"))
+                    // The native Monitor's LAN relay is listening: put it in the QR.
+                    "lanPort" -> onNativeLanPort(obj.optInt("port"))
                     "coachDone" -> {
                         val r = obj.optString("role")
                         if (r == "viewer" || r == "station") {
@@ -6864,24 +6984,23 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
 
-        /**
-         * Dim mode, reaching the one thing the page cannot touch itself: the
-         * backlight. Called by public/app.js as the black overlay opens and
-         * closes. Gated on a live session so a stray call can never strand the
-         * user on a black screen.
-         */
-        @JavascriptInterface
-        fun setDimmed(on: Boolean) {
-            runOnUiThread { applyDim(on && isLive) }
-        }
+    /**
+     * Dim mode, reaching the one thing the page cannot touch itself: the
+     * backlight. Called as the page's black overlay opens and closes. Gated on
+     * a live session so a stray call can never strand the user on a black screen.
+     */
+    private fun onPageDimmed(on: Boolean) {
+        runOnUiThread { applyDim(on && isLive) }
+    }
 
-        /**
-         * WebView drops `<a download>` on blob: URLs, so snapshots would
-         * disappear without this. The page hands us base64 instead.
-         */
-        @JavascriptInterface
-        fun saveImage(dataUrl: String, filename: String) {
+    /**
+     * A snapshot to the gallery. WebView drops `<a download>` on blob: URLs,
+     * so the web page hands its PNG over the bridge as base64; the native page
+     * hands bytes.
+     */
+    private fun saveImageBytes(bytes: ByteArray, filename: String) {
             // Decoding and writing a multi-megabyte PNG used to happen inside
             // runOnUiThread. It also went to getExternalFilesDir(), which is
             // app-private from API 29 on — so "Saved" was true but the picture
@@ -6891,8 +7010,6 @@ class MainActivity : AppCompatActivity() {
                 .ifBlank { "snapshot.png" }
             io.execute {
                 try {
-                    val b64 = dataUrl.substringAfter("base64,")
-                    val bytes = Base64.decode(b64, Base64.DEFAULT)
                     val values = android.content.ContentValues().apply {
                         put(MediaStore.MediaColumns.DISPLAY_NAME, safe)
                         put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
@@ -6922,16 +7039,12 @@ class MainActivity : AppCompatActivity() {
          * bridge as base64 too. Videos go to MediaStore.Video, not .Images, or
          * they render as a broken thumbnail in the gallery despite saving fine.
          */
-        @JavascriptInterface
-        fun saveVideo(dataUrl: String, filename: String) {
+    private fun saveVideoBytes(bytes: ByteArray, filename: String, mime: String) {
             val safe = filename.replace(Regex("[^A-Za-z0-9._-]"), "_")
                 .replace(Regex("^\\.+"), "_")
                 .ifBlank { "video.webm" }
-            val mime = if (safe.endsWith(".mp4")) "video/mp4" else "video/webm"
             io.execute {
                 try {
-                    val b64 = dataUrl.substringAfter("base64,")
-                    val bytes = Base64.decode(b64, Base64.DEFAULT)
                     val values = android.content.ContentValues().apply {
                         put(MediaStore.MediaColumns.DISPLAY_NAME, safe)
                         put(MediaStore.MediaColumns.MIME_TYPE, mime)
@@ -6953,7 +7066,6 @@ class MainActivity : AppCompatActivity() {
                     runOnUiThread { toast(getString(R.string.snap_save_video_failed)) }
                 }
             }
-        }
     }
 
     // ------------------------------------------------------------- power
@@ -7064,7 +7176,7 @@ class MainActivity : AppCompatActivity() {
             dimHidden.clear()
             for (i in 0 until root.childCount) {
                 val v = root.getChildAt(i)
-                if (v !== web && v.visibility == View.VISIBLE) {
+                if (v !== web && v !== livePage?.view && v.visibility == View.VISIBLE) {
                     v.visibility = View.INVISIBLE   // not GONE: no relayout on wake
                     dimHidden.add(v)
                 }
@@ -7112,7 +7224,10 @@ class MainActivity : AppCompatActivity() {
         isLive = true
         liveSince = System.currentTimeMillis()
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        acquireSessionLocks()
+        // The native engine's Monitor is a foreground service and holds no wake
+        // lock of the app's own (Google Play's rule for camera services); the
+        // web page needs the old locks to survive dim mode.
+        if (livePage == null) acquireSessionLocks()
         if (prefs.getString("role", null) == "station") {
             startBatteryMirror()
             startChimeAudio()
@@ -7146,6 +7261,7 @@ class MainActivity : AppCompatActivity() {
         // sessions by routes of its own too (the "End the call?" dialog, a load
         // error, onDestroy). Tearing the WebView down releases the camera and
         // the LED with it; this is the explicit off, ahead of that.
+        livePage?.torchOff()
         web?.evaluateJavascript("window.tawnyTorchOff && window.tawnyTorchOff()", null)
         // Whatever else happens, the user must never be left holding a phone
         // whose screen is pinned black with no live screen to tap.
@@ -7191,6 +7307,7 @@ class MainActivity : AppCompatActivity() {
                     else -> plugged != 0            // status unknown — fall back to "on a lead"
                 }
                 Diag.log("shell", "battery $pct% charging=$charging (status=$status plugged=$plugged)")
+                livePage?.battery(pct, charging)
                 web?.evaluateJavascript(
                     "window.tawnyBattery && window.tawnyBattery($pct, $charging)", null
                 )
@@ -7350,13 +7467,14 @@ class MainActivity : AppCompatActivity() {
         lastDeviceCW = deviceCW
         lastWindowCW = w
         Diag.log("shell", "orientation device=$deviceCW window=$w")
+        livePage?.orientation(deviceCW, w)
         web?.evaluateJavascript(
             "window.tawnyOrientation && window.tawnyOrientation($deviceCW,$w)", null
         )
     }
 
     private fun startOrientationWatch() {
-        if (orientWatch != null || web == null) return
+        if (orientWatch != null || (web == null && livePage == null)) return
         val w = object : OrientationEventListener(this, SensorManager.SENSOR_DELAY_NORMAL) {
             override fun onOrientationChanged(deg: Int) {
                 // Flat on a table, or being carried: no usable reading. Keep
@@ -7404,7 +7522,10 @@ class MainActivity : AppCompatActivity() {
         Hue.load(this)
         root.setBackgroundColor(Hue.BG)
         val w = web
-        if (w != null) {
+        val lp = livePage
+        if (lp != null) {
+            lp.systemTheme(systemTheme())
+        } else if (w != null) {
             w.evaluateJavascript(
                 // Repaint only. This used to call tawnySetTheme with the
                 // *resolved* palette, which posted it straight back as the
@@ -7422,6 +7543,7 @@ class MainActivity : AppCompatActivity() {
         // Nobody is turning a phone whose app is not on screen, and the sensor
         // is not free.
         stopOrientationWatch()
+        livePage?.foreground(false)
         web?.evaluateJavascript(
             "window.dispatchEvent(new Event('tawny:background'))", null
         )
@@ -7438,6 +7560,7 @@ class MainActivity : AppCompatActivity() {
             applyLowRefreshRate()
             if (isDimmed) { isDimmed = false; applyDim(true) }
         }
+        livePage?.foreground(true)
         web?.evaluateJavascript(
             "window.dispatchEvent(new Event('tawny:foreground'))", null
         )
@@ -7453,6 +7576,8 @@ class MainActivity : AppCompatActivity() {
         playScene?.stop()
         web?.destroy()
         web = null
+        livePage?.destroy()
+        livePage = null
         super.onDestroy()
     }
 

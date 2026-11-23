@@ -6,6 +6,8 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="tawny.xml" />
+        <!-- Sealed under a Keystore key that never leaves this phone. -->
+        <exclude domain="sharedpref" path="tawny_native.xml" />
         <exclude domain="file" path="app_webview" />
         <!-- The diagnostics log records room ids (hashes of the channel key). -->
         <exclude domain="file" path="diag.log" />
