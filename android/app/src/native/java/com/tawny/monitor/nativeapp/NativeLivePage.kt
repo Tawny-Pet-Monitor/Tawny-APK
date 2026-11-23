@@ -21,6 +21,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.onSubscription
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 
@@ -112,13 +113,18 @@ class NativeLivePage(private val activity: Activity, private val shell: LiveShel
     private var destroyed = false
 
     private fun startStation(args: LiveStart) {
-        scope.launch { MonitorState.events.collect { shell.post(it) } }
         val running = MonitorState.engine
-        if (running != null) {
-            // Back to a Monitor that kept running with this screen closed.
-            running.replay()
-            return
+        scope.launch {
+            MonitorState.events
+                // Back to a Monitor that kept running with this screen closed:
+                // it says everything again (its LAN port, its Nostr key, who
+                // is watching), but only once this screen listens. The events
+                // keep nothing for late listeners, so a replay sent before
+                // that was lost, and the QR came back without the Wi-Fi path.
+                .onSubscription { running?.replay() }
+                .collect { shell.post(it) }
         }
+        if (running != null) return
         MonitorState.pending = args
         MonitorService.start(activity)
     }
