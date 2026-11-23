@@ -190,6 +190,9 @@ class ClipRecorder(
                 o == MediaCodec.INFO_TRY_AGAIN_LATER -> if (!ending || ++waits > 50) return
                 o == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> synchronized(lock) {
                     val m = muxer ?: return
+                    // A muxer takes no tracks once started (the clip went ahead
+                    // without the late one): this stream is left out of it.
+                    if (muxing) return@synchronized
                     if (isVideo) {
                         videoTrack = m.addTrack(codec.outputFormat)
                         videoFormatAt = System.nanoTime()

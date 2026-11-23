@@ -128,7 +128,16 @@ class SoundFeed(context: Context, private val log: (String) -> Unit) {
                     for (v in buf) { val a = if (v < 0) -v else v.toInt(); if (a > peak) peak = a }
                     if (frames % 5 == 0) { levelNow.value = (peak / 32768f).coerceIn(0f, 1f); peak = 0 }
                     // A clip records the room whether or not this phone is listening.
-                    recordTap?.invoke(buf)
+                    // A recorder fault ends the clip's sound, never the call
+                    // (an uncaught throw here would end the whole app).
+                    recordTap?.let { tap ->
+                        try {
+                            tap(buf)
+                        } catch (t: Throwable) {
+                            recordTap = null
+                            log("recording: the sound stopped (${t.javaClass.simpleName})")
+                        }
+                    }
                     if (speakerMuted) buf.fill(0)
                     track.write(buf, 0, FRAME)
                 }

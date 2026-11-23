@@ -100,8 +100,8 @@ class MonitorService : LifecycleService() {
             this, store, args,
             onCapture = { on -> lifecycleScope.launch(Dispatchers.Main) { onCapture(on) } },
             onTalking = { on -> if (on) sound.startSpeaker() else sound.stopSpeaker() },
-            onTorch = { on -> runOnMain { camera.torch(on) } },
-            onZoom = { z -> runOnMain { camera.zoom(z) } },
+            onTorch = { on -> runOnMain(engine?.torch ?: MonitorEngine.TorchState(false, false, "back")) { camera.torch(on) } },
+            onZoom = { z -> runOnMain(1f) { camera.zoom(z) } },
             maxZoom = { camera.maxZoom() },
         )
         engine = e
@@ -143,14 +143,17 @@ class MonitorService : LifecycleService() {
         getSystemService(NotificationManager::class.java)?.notify(NOTICE_ID, notice(on))
     }
 
-    private fun <T> runOnMain(f: () -> T): T {
+    /** Runs [f] on the main thread and returns its result, or [fallback] when the
+     *  main thread doesn't get to it within 2 s (it may be busy ending the Monitor). */
+    private fun <T : Any> runOnMain(fallback: T, f: () -> T): T {
         if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) return f()
         val latch = java.util.concurrent.CountDownLatch(1)
-        var r: T? = null
-        ContextCompat.getMainExecutor(this).execute { r = f(); latch.countDown() }
-        latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
-        @Suppress("UNCHECKED_CAST")
-        return r as T
+        val r = java.util.concurrent.atomic.AtomicReference<T?>(null)
+        ContextCompat.getMainExecutor(this).execute {
+            try { r.set(f()) } finally { latch.countDown() }
+        }
+        if (!latch.await(2, java.util.concurrent.TimeUnit.SECONDS)) return fallback
+        return r.get() ?: fallback
     }
 
     private fun fail(why: String) {
@@ -167,7 +170,9 @@ class MonitorService : LifecycleService() {
         MonitorState.camera = null
         camera.close()
         sound.close()
-        engine?.stop()
+        // Off the main thread: stopping blocks briefly, and the core may be
+        // waiting on the main thread (runOnMain) at this very moment.
+        engine?.let { e -> Thread({ e.stop() }, "tawny-monitor-stop").start() }
         engine = null
         MonitorState.set { MonitorUi() }
         super.onDestroy()

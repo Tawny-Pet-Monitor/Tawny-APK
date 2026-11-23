@@ -36,6 +36,8 @@ class MonitorEngine(
 ) : MonitorListener {
     private val ctx = context.applicationContext
     private var handle: MonitorHandle? = null
+    /** Stopped, possibly while [start] was still connecting: its handle is closed on arrival. */
+    private var stopped = false
     private val talking = mutableSetOf<String>()
     private var connected = setOf<String>()
     private var chimeAt = 0L
@@ -86,7 +88,14 @@ class MonitorEngine(
             MonitorState.log("port $want is taken; using another")
             MonitorHandle.start(settings(0), this)
         }
-        handle = h
+        synchronized(this) {
+            if (stopped) {
+                // Ended while it was starting: nothing may keep running unseen.
+                h.stop(); h.close()
+                return
+            }
+            handle = h
+        }
         start.pairCode?.let { h.setPairCode(it, start.pairExpMs.toULong()) }
         MonitorState.set { it.copy(phase = MonitorUi.Phase.On) }
         MonitorState.post("live")
@@ -128,9 +137,13 @@ class MonitorEngine(
     private fun torchFrame() = JSONObject().put("type", "torch")
         .put("on", torch.on).put("supported", torch.supported).put("facing", torch.facing)
 
+    /** Ends the Monitor, also one still starting. Blocks briefly: call off the main thread. */
     fun stop() {
-        handle?.let { it.stop(); it.close() }
-        handle = null
+        val h = synchronized(this) {
+            stopped = true
+            handle.also { handle = null }
+        }
+        h?.let { it.stop(); it.close() }
     }
 
     private fun wifiAddress(): String? {

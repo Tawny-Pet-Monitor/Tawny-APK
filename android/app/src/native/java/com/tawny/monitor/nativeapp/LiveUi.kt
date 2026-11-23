@@ -498,9 +498,15 @@ private fun BoxScope.TalkFab(page: NativeLivePage, enabled: Boolean, talking: Bo
             .pointerInput(enabled) {
                 detectTapGestures(onPress = {
                     if (!enabled) return@detectTapGestures
-                    onTalk(true)
-                    tryAwaitRelease()
-                    onTalk(false)
+                    // `finally`: when the call drops mid-press, this gesture
+                    // is cancelled inside tryAwaitRelease(), and the microphone
+                    // must not be left open.
+                    try {
+                        onTalk(true)
+                        tryAwaitRelease()
+                    } finally {
+                        onTalk(false)
+                    }
                 })
             },
         contentAlignment = Alignment.Center,

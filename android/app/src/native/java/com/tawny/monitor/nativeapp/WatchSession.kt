@@ -50,6 +50,8 @@ class WatchSession(
     private val state = MutableStateFlow(WatchUi())
     val ui: StateFlow<WatchUi> = state
     private var handle: WatchHandle? = null
+    /** Stopped, possibly while [start] was still connecting: its handle is closed on arrival. */
+    private var stopped = false
     private var everLive = false
     private val timer = Timer("tawny-watch", true)
     val sound = SoundFeed(context.applicationContext) { log(it) }
@@ -59,7 +61,7 @@ class WatchSession(
         // The Monitor's key from the pairing, or the one it handed over since.
         val station = args.nostrStation ?: store.monitorNostr(args.key)
         val nostr = station != null && servers.nostrRelays.isNotEmpty()
-        handle = WatchHandle.start(
+        val h = WatchHandle.start(
             WatchSettings(
                 channelKey = args.key,
                 pid = store.bondId(args.key),
@@ -78,6 +80,13 @@ class WatchSession(
             ),
             this,
         )
+        synchronized(this) {
+            if (stopped) {
+                h.stop(); h.close()
+                return
+            }
+            handle = h
+        }
         // As app.js: a Monitor that never answers is "offline", said by the shell.
         timer.schedule(UNREACHABLE_MS) { if (!everLive) post("unreachable", emptyArray()) }
     }
@@ -97,10 +106,13 @@ class WatchSession(
     fun clearToast() = state.update { it.copy(toast = null) }
 
     fun stop() {
+        val h = synchronized(this) {
+            stopped = true
+            handle.also { handle = null }
+        }
         timer.cancel()
         sound.close()
-        handle?.let { it.stop(); it.close() }
-        handle = null
+        h?.let { it.stop(); it.close() }
     }
 
     fun diag(line: String) = log(line)
@@ -136,6 +148,8 @@ class WatchSession(
 
     override fun onLeft() {
         sound.stopSpeaker()
+        // Held Talk ends with the call: never a microphone left open into the next one.
+        if (state.value.talking) setTalking(false)
         state.update { it.copy(phase = WatchUi.Phase.Lost, check = SecurityCheck.Pending) }
     }
 

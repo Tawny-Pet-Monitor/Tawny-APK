@@ -16,8 +16,15 @@ object NativeBridge {
     @Synchronized
     fun ensureLoaded(context: Context): Boolean {
         if (ready) return true
-        System.loadLibrary("tawny_ffi")
-        ready = init(context.applicationContext)
+        // Never throws: a build without this device's ABI, or a library that
+        // won't link, means the native engine isn't there, not a crash.
+        ready = try {
+            System.loadLibrary("tawny_ffi")
+            init(context.applicationContext)
+        } catch (t: Throwable) {
+            android.util.Log.e("Tawny", "the native engine didn't load: $t")
+            false
+        }
         return ready
     }
 

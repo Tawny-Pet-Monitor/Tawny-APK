@@ -92,6 +92,9 @@ interface LiveShell {
 interface LivePageFactory {
     fun create(activity: Activity, shell: LiveShell): LivePage
 
+    /** Whether this page can run on this device (its engine loads). Never throws. */
+    fun usable(activity: Activity): Boolean = true
+
     companion object {
         /**
          * The native factory if this build has one. Looked up by name because

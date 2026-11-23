@@ -26,12 +26,12 @@ import java.io.ByteArrayOutputStream
 
 /** The shell finds this by name (LivePageFactory.native). */
 object NativeLivePages : LivePageFactory {
-    override fun create(activity: Activity, shell: LiveShell): LivePage {
-        // The page's video surface and camera call into the core as soon as
-        // they exist, so it is loaded first (once per process; ~0.1 s).
-        NativeBridge.ensureLoaded(activity)
-        return NativeLivePage(activity, shell)
-    }
+    // The page's video surface and camera call into the core as soon as they
+    // exist, so the shell asks this first (loading it once per process, ~0.1 s)
+    // and uses the web page when it can't load.
+    override fun usable(activity: Activity): Boolean = NativeBridge.ensureLoaded(activity)
+
+    override fun create(activity: Activity, shell: LiveShell): LivePage = NativeLivePage(activity, shell)
 }
 
 /**

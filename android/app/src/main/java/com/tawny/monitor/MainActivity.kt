@@ -476,6 +476,29 @@ class MainActivity : AppCompatActivity() {
         else -> null
     }
 
+    /** Runs after the notifications prompt, whatever the answer. */
+    private var afterNotifications: (() -> Unit)? = null
+
+    private val askNotifications = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { _ ->
+        afterNotifications?.invoke()
+        afterNotifications = null
+    }
+
+    /**
+     * Android 13+: the native Monitor keeps running when the app is closed, and
+     * its notification (with Stop) is the only sign of it then, so it asks to
+     * show notifications first. A refusal doesn't stop it: [then] runs either way.
+     */
+    private fun withNotifications(then: () -> Unit) {
+        if (android.os.Build.VERSION.SDK_INT < 33 || has(android.Manifest.permission.POST_NOTIFICATIONS)) {
+            then(); return
+        }
+        afterNotifications = then
+        askNotifications.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+    }
+
     private val askPermissions = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { granted ->
@@ -5744,10 +5767,10 @@ class MainActivity : AppCompatActivity() {
             goLiveWith(role, null)
             return
         }
-        if (role == "station" && LivePageFactory.native != null) {
+        if (role == "station" && nativeLive() != null) {
             // The Rust Monitor runs its own LAN relay; it reports the port
             // (event "lanPort") and the QR is redrawn with it.
-            goLiveWith(role, null)
+            withNotifications { goLiveWith(role, null) }
             return
         }
         if (role == "station") {
@@ -5801,7 +5824,7 @@ class MainActivity : AppCompatActivity() {
             "rv=${rv.ifBlank { "NONE" }}${if (customRendezvous().isNotBlank()) " (custom)" else ""} " +
             "ticket=${if (token.isNullOrBlank()) "MISSING" else "yes"} " +
             "paircode=${if (code.isNullOrBlank()) "none" else "yes"}")
-        val native = LivePageFactory.native
+        val native = nativeLive()
         if (native != null) {
             showNativeLive(native, role, key, name, signal, rv, token, pairPayload, code, codeExp)
             return
@@ -5815,6 +5838,11 @@ class MainActivity : AppCompatActivity() {
      * [showWeb] (pairing sheet, swipe-to-end), with a [LivePage] in place of
      * the WebView.
      */
+    /** The native live page, when this build has one and its engine loads on
+     *  this device (it may not, on an ABI the build left out): else the web page. */
+    private fun nativeLive(): LivePageFactory? =
+        LivePageFactory.native?.takeIf { it.usable(this) }
+
     private fun showNativeLive(
         factory: LivePageFactory, role: String, key: String, name: String,
         signal: String?, rendezvous: String, token: String?, pairPayload: String?,
@@ -6844,16 +6872,16 @@ class MainActivity : AppCompatActivity() {
         fun setDimmed(on: Boolean) = onPageDimmed(on)
 
         @JavascriptInterface
-        fun saveImage(dataUrl: String, filename: String) =
-            saveImageBytes(Base64.decode(dataUrl.substringAfter("base64,"), Base64.DEFAULT), filename)
+        fun saveImage(dataUrl: String, filename: String) {
+            val bytes = decodeDataUrl(dataUrl, R.string.snap_save_photo_failed) ?: return
+            saveImageBytes(bytes, filename)
+        }
 
         @JavascriptInterface
         fun saveVideo(dataUrl: String, filename: String) {
             val safe = filename.ifBlank { "video.webm" }
-            saveVideoBytes(
-                Base64.decode(dataUrl.substringAfter("base64,"), Base64.DEFAULT), safe,
-                if (safe.endsWith(".mp4")) "video/mp4" else "video/webm",
-            )
+            val bytes = decodeDataUrl(dataUrl, R.string.snap_save_video_failed) ?: return
+            saveVideoBytes(bytes, safe, if (safe.endsWith(".mp4")) "video/mp4" else "video/webm")
         }
     }
 
@@ -6995,6 +7023,16 @@ class MainActivity : AppCompatActivity() {
         runOnUiThread { applyDim(on && isLive) }
     }
 
+    /** A page's `data:…;base64,` URL as bytes; a bad one shows [failed] and gives null. */
+    private fun decodeDataUrl(dataUrl: String, @androidx.annotation.StringRes failed: Int): ByteArray? =
+        try {
+            Base64.decode(dataUrl.substringAfter("base64,"), Base64.DEFAULT)
+        } catch (e: IllegalArgumentException) {
+            Log.w("Tawny", "a save from the page had no readable data: ${e.message}")
+            runOnUiThread { toast(getString(failed)) }
+            null
+        }
+
     /**
      * A snapshot to the gallery. WebView drops `<a download>` on blob: URLs,
      * so the web page hands its PNG over the bridge as base64; the native page
@@ -7107,8 +7145,8 @@ class MainActivity : AppCompatActivity() {
      * foreground-service / libwebrtc work in docs/DIRECTION.md §1A — this only
      * stops a session the user can see from having its radio taken away.
      */
-    private fun acquireSessionLocks() {
-        if (wakeLock == null) {
+    private fun acquireSessionLocks(wake: Boolean = true) {
+        if (wake && wakeLock == null) {
             val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
             wakeLock = runCatching {
                 pm?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "tawny:session")?.apply {
@@ -7225,9 +7263,11 @@ class MainActivity : AppCompatActivity() {
         liveSince = System.currentTimeMillis()
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         // The native engine's Monitor is a foreground service and holds no wake
-        // lock of the app's own (Google Play's rule for camera services); the
-        // web page needs the old locks to survive dim mode.
-        if (livePage == null) acquireSessionLocks()
+        // lock of the app's own (Google Play's rule for camera services). Every
+        // other session keeps it to survive dim mode, and every session keeps
+        // the low-latency Wi-Fi lock: in power save the radio stutters the video.
+        val nativeMonitor = livePage != null && prefs.getString("role", null) == "station"
+        acquireSessionLocks(wake = !nativeMonitor)
         if (prefs.getString("role", null) == "station") {
             startBatteryMirror()
             startChimeAudio()
@@ -7268,6 +7308,9 @@ class MainActivity : AppCompatActivity() {
         applyDim(false)
         restoreRefreshRate()
         releaseSessionLocks()
+        // The port a native Monitor reported belongs to that session: the next
+        // QR waits for the next one's ("lanPort") instead of advertising it.
+        nativeLanPort = 0
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         refreshSystemBars()
         val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
