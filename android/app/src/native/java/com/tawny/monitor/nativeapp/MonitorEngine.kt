@@ -127,6 +127,11 @@ class MonitorEngine(
 
     /** The phone's battery, mirrored to every Viewer (app.js's `battery` frame). */
     fun battery(pct: Int, charging: Boolean) {
+        // Android repeats the battery broadcast on every voltage or
+        // temperature tick; as app.js, only a real change goes out (a Viewer
+        // that joins later is sent the last one when it connects).
+        val last = lastBattery
+        if (last != null && last.optInt("level") == pct && last.optBoolean("charging") == charging) return
         val f = JSONObject().put("type", "battery").put("level", pct).put("charging", charging)
         lastBattery = f
         runCatching { handle?.broadcast(f.toString()) }
