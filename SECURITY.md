@@ -159,6 +159,18 @@ Now:
   5 s, and are counted against the per-host cap so they cannot be used to
   sidestep it.
 - The raw ticket is only ever sent on the TLS-protected cloud transport.
+- The challenge proves a socket reaches *someone* holding the key, not who is
+  at the far end: someone on the Wi-Fi who poses as the Monitor's address can
+  pass a phone's answer on to the real Monitor and carry its frames. So every
+  offer and answer is also signed, `sm = HMAC-SHA256(channel key,
+  "tawny-sdp-v1|" + type + "|" + the one certificate fingerprint it names)`.
+  Without the key nobody can put their own certificate in one, so carrying
+  frames gets them nothing. A forged signature is refused on every path. An
+  unsigned description over the LAN is a Tawny from before signatures: the app
+  lets it in but shows the safety code for that call, every time, as on the
+  cloud path; the native engine closes the socket instead (close code `4012`,
+  not final), which sends an older phone on to Nostr or the rendezvous, where
+  its call gets a code.
 - Frames are capped at 64 KB at the protocol level (`Draft_6455`), and the room
   map entry is created on admission rather than on connection — refused
   connections used to leave permanent empty rooms behind, walking the map toward
@@ -206,8 +218,10 @@ UID boundary, so any other app on the device with `INTERNET` can reach it.
 
 ## Short authentication string (SAS)
 
-On the **cloud** path only (the LAN Monitor *is* the relay, so there is nothing
-to check), both ends show a 6-character code derived from
+On the **cloud** path, and on a LAN call whose other end did not sign its
+offer or answer (above: on the LAN the Monitor *is* the relay, and a signed
+description already ties the certificate to the key), both ends show a
+6-character code derived from
 `HMAC(channelKey, "tawny-sas-v1" | sorted DTLS certificate fingerprints)`. The
 fingerprints are read from `getStats()` — the *negotiated* certificate, not the
 SDP text, so a relay cannot hide a real fingerprint behind a decoy
@@ -278,7 +292,7 @@ after-the-fact alarm, not a gate.
 - **A LAN peer can still degrade the Monitor's relay** — the per-IP cap bounds a
   single host to 8 sockets, but several cooperating hosts on the Wi-Fi could
   exhaust the pending-admission slots. DoS only, by someone already on your
-  network, and they can no longer reach the camera.
+  network, and with signed offers and answers they can't reach the camera.
 - **Rendezvous rate-limit / ticket state is in memory** (Node reference) or per
   Durable Object (Cloudflare) / per isolate (Deno — pin one region). A restart
   clears the Node one.
