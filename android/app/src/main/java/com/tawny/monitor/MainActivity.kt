@@ -3068,6 +3068,22 @@ class MainActivity : AppCompatActivity() {
         prefs.edit().putString("recentSessions", arr.toString()).apply()
     }
 
+    /**
+     * "Set up a new session": nothing of the last one carries over. Keeping
+     * its channel key made a new Monitor share the very room, and rendezvous
+     * room, of the Monitor this phone last watched. The saved sessions stay;
+     * opening one puts its own key back ([restoreSession]).
+     */
+    private fun startNewSession() {
+        prefs.edit()
+            .remove("channelKey").remove("channelName")
+            .remove("role").remove(PARKED_ROLE).remove("myToken").remove("pairToken")
+            .remove("signalUrl").remove("pairNostr")
+            .apply()
+        pairCode = null
+        showRole()
+    }
+
     private fun restoreSession(session: org.json.JSONObject) {
         val key = session.optString("channelKey")
         val role = session.optString("role")
@@ -3347,7 +3363,7 @@ class MainActivity : AppCompatActivity() {
 
         col.addView(gap(12))
         // Was pill() reimplemented by hand, at a different size and padding.
-        col.addView(ghost(getString(R.string.sessions_new)) { showRole() })
+        col.addView(ghost(getString(R.string.sessions_new)) { startNewSession() })
 
         // The only two places money is ever mentioned, both below the fold of
         // the thing the user came here to do. Deliberately not on welcome, role
