@@ -71,6 +71,7 @@ class WatchSession(
                 mic = true,
                 lan = args.signal.takeIf { !servers.nostrOnly },
                 rendezvous = args.rendezvous.takeIf { it.isNotBlank() && args.token != null && !servers.nostrOnly },
+                rendezvousFallback = servers.rendezvousFallback.takeIf { args.token != null && !servers.nostrOnly },
                 ticket = args.token,
                 nostrStation = station.takeIf { nostr },
                 nostrSecret = if (nostr) store.viewerNostrSecret(args.key) else null,

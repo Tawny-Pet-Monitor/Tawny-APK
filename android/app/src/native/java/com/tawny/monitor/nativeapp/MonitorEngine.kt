@@ -71,6 +71,7 @@ class MonitorEngine(
             nostrHealth = store.relayHealth,
             nostrKnown = store.nostrKnown(start.key),
             rendezvous = start.rendezvous.takeIf { it.isNotBlank() && !servers.nostrOnly && start.token != null },
+            rendezvousFallback = servers.rendezvousFallback.takeIf { !servers.nostrOnly && start.token != null },
             lanPort = port?.toUShort(),
             lanIp = wifi,
             gate = store.gate(start.key),

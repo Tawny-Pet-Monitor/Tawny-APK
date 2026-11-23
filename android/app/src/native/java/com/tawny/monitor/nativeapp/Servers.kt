@@ -10,6 +10,12 @@ data class Servers(
     /** Pair over Nostr only: no LAN relay, no rendezvous. */
     val nostrOnly: Boolean,
     val ice: List<IceServerSpec>,
+    /**
+     * The build's rendezvous, kept behind the user's own (the core gives up on
+     * that one if it won't let us in). Only sent when the user named a relay,
+     * and never under tighter privacy.
+     */
+    val rendezvousFallback: String? = null,
 ) {
     companion object {
         private val STUN_DEFAULT = listOf("stun:stun.cloudflare.com:3478", "stun:stun.l.google.com:19302")
@@ -33,7 +39,8 @@ data class Servers(
                     }
                 }
             }
-            return Servers(relays, o.optBoolean("nostrOnly"), ice)
+            val fallback = o.optString("fallback").takeIf { !strict && it.matches(Regex("^wss?://\\S+$")) }
+            return Servers(relays, o.optBoolean("nostrOnly"), ice, fallback)
         }
     }
 }
