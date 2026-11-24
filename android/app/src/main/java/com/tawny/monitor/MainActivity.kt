@@ -157,13 +157,32 @@ object Diag {
      */
     private val IPV4 = Regex("(?<![\\d.])(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})(?![\\d.])")
 
-    private fun redact(s: String): String = IPV4.replace(s) { m ->
-        when {
-            m.groupValues.drop(1).any { (it.toIntOrNull() ?: 256) > 255 } -> m.value
-            m.value == "127.0.0.1" -> m.value      // this phone's own loopback
-            PairLink.isPrivateHostPort("${m.value}:0") -> "<lan-ip>"
-            else -> "<ip>"
+    /**
+     * What a report never carries besides addresses (the policy: "hashed room
+     * identifiers and connection events"). The native engine's own lines
+     * stay in full in logcat, on this phone; this log is the one a user may
+     * choose to send.
+     * - A peer's id or key: the long hex the relays and Nostr give phones
+     *   (Monitor and Viewer keys, bond ids, relay connection ids). The room id
+     *   after `room=` stays: it is a hash, and it lines two phones' logs up.
+     * - A pairing link's key, ticket, code or Monitor key, should one appear.
+     * - Names people typed: `name=…`, and `"name"`/`"label"` in a logged frame.
+     */
+    private val HEX_ID = Regex("(?<!room=)(?<![0-9A-Za-z])(?=[0-9a-f]*[a-f])[0-9a-f]{8,}(?![0-9A-Za-z])")
+    private val LINK_SECRET = Regex("([?&#](?:k|t|c|np)=)[^&\\s\"]+")
+    private val NAME = Regex("(\\bname=)(\"[^\"]*\"|\\S+)")
+    private val JSON_NAME = Regex("(\"(?:name|label|myName|device)\"\\s*:\\s*)\"[^\"]*\"")
+
+    internal fun redact(s: String): String {
+        val noIp = IPV4.replace(s) { m ->
+            when {
+                m.groupValues.drop(1).any { (it.toIntOrNull() ?: 256) > 255 } -> m.value
+                m.value == "127.0.0.1" -> m.value      // this phone's own loopback
+                PairLink.isPrivateHostPort("${m.value}:0") -> "<lan-ip>"
+                else -> "<ip>"
+            }
         }
+        return JSON_NAME.replace(NAME.replace(LINK_SECRET.replace(HEX_ID.replace(noIp, "<id>"), "$1<…>"), "$1<name>"), "$1\"<name>\"")
     }
 
     @Synchronized
