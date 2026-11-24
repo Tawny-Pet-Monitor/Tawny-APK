@@ -58,4 +58,10 @@ class DiagRedactTest {
             r("control: {\"type\":\"meta\",\"name\":\"Pp\",\"from\":\"c3400f6e8186\"}"),
         )
     }
+
+    @Test fun homeAndTailnetHostsGo() {
+        assertEquals("relay=wss://<private-host>:8443/ up", r("relay=wss://tawny.ainu-anoles.ts.net:8443/ up"))
+        assertEquals("lan=ws://<private-host>:8080", r("lan=ws://lous-mac.local:8080"))
+        assertEquals("relay=wss://relay.damus.io", r("relay=wss://relay.damus.io"))
+    }
 }
