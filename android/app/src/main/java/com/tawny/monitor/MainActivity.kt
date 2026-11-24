@@ -172,6 +172,9 @@ object Diag {
     private val LINK_SECRET = Regex("([?&#](?:k|t|c|np)=)[^&\\s\"]+")
     private val NAME = Regex("(\\bname=)(\"[^\"]*\"|\\S+)")
     private val JSON_NAME = Regex("(\"(?:name|label|myName|device)\"\\s*:\\s*)\"[^\"]*\"")
+    // A home or tailnet host name (*.ts.net, *.local, …) can carry a person's
+    // or a household's name.
+    private val PRIVATE_HOST = Regex("(?<![\\w.-])[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*\\.(?:ts\\.net|local|lan|home\\.arpa|internal)(?![\\w.-])")
 
     internal fun redact(s: String): String {
         val noIp = IPV4.replace(s) { m ->
@@ -182,7 +185,9 @@ object Diag {
                 else -> "<ip>"
             }
         }
-        return JSON_NAME.replace(NAME.replace(LINK_SECRET.replace(HEX_ID.replace(noIp, "<id>"), "$1<…>"), "$1<name>"), "$1\"<name>\"")
+        val noSecret = LINK_SECRET.replace(HEX_ID.replace(noIp, "<id>"), "$1<…>")
+        val noName = JSON_NAME.replace(NAME.replace(noSecret, "$1<name>"), "$1\"<name>\"")
+        return PRIVATE_HOST.replace(noName, "<private-host>")
     }
 
     @Synchronized
