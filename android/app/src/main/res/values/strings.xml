@@ -132,7 +132,7 @@
     <string name="diag_subtitle">The last few sessions, as the app saw them.</string>
     <string name="diag_none">(nothing recorded yet)</string>
     <string name="diag_send_to_tawny">Send to Tawny</string>
-    <string name="diag_send_body">Sends the log above plus this phone’s model and Android version — nothing else. No account, no location.</string>
+    <string name="diag_send_body">Sends the log above plus this phone’s model and Android version — nothing else. No account, no location; addresses, ids and names are already taken out.</string>
     <string name="diag_send_another_way">Send another way</string>
     <string name="diag_send_report">Send report</string>
     <string name="diag_copy">Copy to clipboard</string>
