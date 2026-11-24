@@ -1,6 +1,6 @@
 # Tawny — Privacy Policy
 
-_Last updated: 2026-11-15_
+_Last updated: 2026-11-24_
 
 Tawny is a two-way pet monitor. One device (**the Monitor**) stays with your pet
 and sends its camera and microphone; one or more other devices (**Viewers**)
@@ -27,7 +27,7 @@ your information.
 | **Local network** | To discover and connect your two phones. | Stays on your Wi-Fi. |
 | **Photos you save** ("Snapshot") | Saved to your device's Pictures folder, in a "Tawny" album. | No. |
 | **Video clips you save** ("Record") | Short clips, up to 20 seconds, saved to your device's Movies folder, in a "Tawny" album. | No. |
-| **Diagnostics log** | An optional, deliberately out-of-the-way log (long-press the small version number) for working out why a connection failed. Records hashed room identifiers and connection events, never your key or IP addresses. | Only if you tap **Send to Tawny** — see "Sending a diagnostics report" below. Otherwise it stays on your device and is excluded from cloud backup. |
+| **Diagnostics log** | An optional, deliberately out-of-the-way log (long-press the small version number) for working out why a connection failed. Records hashed room identifiers and connection events, never your key, IP addresses, device identifiers or names. | Only if you tap **Send to Tawny** — see "Sending a diagnostics report" below. Otherwise it stays on your device and is excluded from cloud backup. |
 | **Pairing key** | A random 128-bit key, generated on your device, that identifies your private channel. Stored in the app's private storage. | No — it is never sent to any server. Servers only ever see an irreversible hash of it. |
 
 The app requests camera and microphone access only when you set up a role, and
@@ -113,8 +113,11 @@ a connection failed.
 - It is never sent automatically, only when you tap the button.
 - It contains no account, name, email or advertising identifier — there are
   none in the app — and the log records only hashed room identifiers and
-  connection events (for example whether a connection was direct or relayed),
-  never your pairing key or IP addresses.
+  connection events (for example whether a connection was direct or relayed).
+- Before the log is shown, sent or shared, the app takes out IP addresses,
+  home-network and tailnet host names, the ids and keys of your devices, the
+  parts of a pairing code that work as a key, and the names you gave your
+  devices or pets. The screen shows the exact text that would be sent.
 - Reports are held for at most 30 days and then deleted automatically.
 - If you would rather not send it through the app, the same screen offers
   "Send another way" (your device's normal share sheet) and "Copy", so you can
