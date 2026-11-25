@@ -52,11 +52,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.ui.layout.onSizeChanged
@@ -311,23 +313,40 @@ private fun ViewerLive(page: NativeLivePage, s: WatchSession) {
     var zoom by remember { mutableStateOf(1f) }
     var zoomAt by remember { mutableStateOf(0L) }
     var pan by remember { mutableStateOf(Offset.Zero) }
+    var stage by remember { mutableStateOf(IntSize.Zero) }
+    val video by rememberUpdatedState(ui.videoW to ui.videoH)
+    // The picture turned or the stage changed shape: keep it inside its edges.
+    LaunchedEffect(ui.videoW, ui.videoH, stage) { pan = keepInside(pan, zoom, stage, video.first, video.second) }
     Column(Modifier.fillMaxSize().background(t.stage)) {
         Box(
-            Modifier.weight(1f).fillMaxWidth().clipToBounds().pointerInput(ui.zoomSupported) {
+            Modifier.weight(1f).fillMaxWidth().clipToBounds().onSizeChanged { stage = it }.pointerInput(ui.zoomSupported) {
                 pinch(
-                    onZoom = { f ->
-                        zoom = (zoom * f).coerceIn(1f, 8f)
-                        if (zoom <= 1.005f) pan = Offset.Zero
+                    onPinch = { c, f, d ->
+                        val z = (zoom * f).coerceIn(1f, 8f)
+                        if (!ui.zoomSupported) {
+                            // The bit of picture under the fingers stays under
+                            // them: the pinch zooms there, and moving both
+                            // fingers moves the picture (as app.js zoomAround).
+                            val mid = Offset(stage.width / 2f, stage.height / 2f)
+                            val k = z / zoom
+                            pan = keepInside((pan - (c - mid)) * k + (c - mid) + d, z, stage, video.first, video.second)
+                        }
+                        zoom = z
                         zoomAt = System.currentTimeMillis()
                     },
-                    // Zoomed on this phone (the Monitor can't): one finger moves the view.
-                    onPan = { d -> if (!ui.zoomSupported && zoom > 1.005f) pan += d },
+                    // Zoomed on this phone (the Monitor can't): one finger moves
+                    // the view, also the one left down after a pinch.
+                    onPan = { d ->
+                        if (!ui.zoomSupported && zoom > 1.005f) {
+                            pan = keepInside(pan + d, zoom, stage, video.first, video.second)
+                        }
+                    },
                     // The Monitor zooms its own camera: sharper than enlarging here.
                     onEnd = { if (ui.zoomSupported) s.zoom(zoom) },
                 )
             },
         ) {
-            Video(page, ui.videoW, ui.videoH, digital = if (ui.zoomSupported) 1f else zoom, pan = pan) { pan = it }
+            Video(page, ui.videoW, ui.videoH, digital = if (ui.zoomSupported) 1f else zoom, pan = pan)
             if (page.myCamera != null) MyCameraPip(page) { page.myCamera }
             Rail(page, live = ui.phase == WatchUi.Phase.Live, level = level) {
                 // From the Monitor's list, the one way in to who else is watching.
@@ -392,10 +411,15 @@ private fun ViewerLive(page: NativeLivePage, s: WatchSession) {
 }
 
 /**
- * Two fingers zoom (each move's factor to [onZoom]), one finger drags
- * ([onPan]); [onEnd] when the fingers lift after a pinch.
+ * Two fingers zoom and move ([onPinch]: their centre on the stage, this
+ * move's zoom factor and its pan); one finger drags ([onPan]), also the one
+ * left down after a pinch; [onEnd] when the fingers lift after a pinch.
  */
-private suspend fun PointerInputScope.pinch(onZoom: (Float) -> Unit, onPan: (Offset) -> Unit, onEnd: () -> Unit) {
+private suspend fun PointerInputScope.pinch(
+    onPinch: (Offset, Float, Offset) -> Unit,
+    onPan: (Offset) -> Unit,
+    onEnd: () -> Unit,
+) {
     awaitEachGesture {
         awaitFirstDown(requireUnconsumed = false)
         var pinched = false
@@ -404,18 +428,43 @@ private suspend fun PointerInputScope.pinch(onZoom: (Float) -> Unit, onPan: (Off
             val down = ev.changes.count { it.pressed }
             if (down >= 2) {
                 val f = ev.calculateZoom()
-                if (f != 1f) {
+                val d = ev.calculatePan()
+                if (f != 1f || d != Offset.Zero) {
                     pinched = true
-                    onZoom(f)
+                    onPinch(ev.calculateCentroid(useCurrent = true), f, d)
                     ev.changes.forEach { it.consume() }
                 }
-            } else if (down == 1 && !pinched) {
+            } else if (down == 1) {
                 val d = ev.calculatePan()
                 if (d != Offset.Zero) onPan(d)
             }
         } while (ev.changes.any { it.pressed })
         if (pinched) onEnd()
     }
+}
+
+/**
+ * [pan] held so the zoomed picture never leaves a bar inside the stage: a
+ * picture wider (taller) than the stage may go as far as either of its own
+ * edges; a smaller one stays centred. The picture is fitted whole into the
+ * stage and scaled about its centre, the stage's centre. As app.js
+ * clampZoomPan, with the same edge allowance: half a picture pixel plus half a
+ * screen pixel, as zoomed, so the blended outer row never shows as a hairline.
+ */
+internal fun keepInside(pan: Offset, zoom: Float, stage: IntSize, videoW: Int, videoH: Int): Offset {
+    if (zoom <= 1.005f || stage.width == 0 || stage.height == 0) return Offset.Zero
+    val r = if (videoW > 0 && videoH > 0) videoW.toFloat() / videoH else 16f / 9f
+    val sw = stage.width.toFloat()
+    val sh = stage.height.toFloat()
+    val (pw, ph) = if (sw / sh > r) sh * r to sh else sw to sw / r
+    val k = if (videoW > 0) pw / videoW else 1f
+    val edge = zoom * (k + 1f) / 2f
+    fun axis(t: Float, span: Float, view: Float): Float {
+        if (span <= view) return 0f
+        val m = (span - view) / 2f + edge
+        return t.coerceIn(-m, m)
+    }
+    return Offset(axis(pan.x, zoom * pw, sw), axis(pan.y, zoom * ph, sh))
 }
 
 @Composable
@@ -425,10 +474,8 @@ private fun BoxScope.Video(
     videoH: Int,
     digital: Float = 1f,
     pan: Offset = Offset.Zero,
-    clampPan: (Offset) -> Unit = {},
 ) {
     val ratio = if (videoW > 0 && videoH > 0) videoW.toFloat() / videoH else 16f / 9f
-    var box by remember { mutableStateOf(IntSize.Zero) }
     AndroidView(
         // A TextureView, not a SurfaceView: it composites like any other view,
         // so the rail, the talk key and the cards draw over the picture (a
@@ -456,7 +503,6 @@ private fun BoxScope.Video(
         modifier = Modifier
             .align(Alignment.Center)
             .aspectRatio(ratio, matchHeightConstraintsFirst = ratio < 1f)
-            .onSizeChanged { box = it }
             .graphicsLayer {
                 scaleX = digital
                 scaleY = digital
@@ -465,13 +511,6 @@ private fun BoxScope.Video(
             }
             .semantics { contentDescription = "The Monitor's camera" },
     )
-    // As app.js clampZoomPan: never past the picture's own edge.
-    LaunchedEffect(pan, digital, box) {
-        val mx = (digital - 1f) / 2f * box.width
-        val my = (digital - 1f) / 2f * box.height
-        val c = Offset(pan.x.coerceIn(-mx, mx), pan.y.coerceIn(-my, my))
-        if (c != pan) clampPan(c)
-    }
 }
 
 /** Hold-to-talk: a floating key of its own, centred above the controls. */
