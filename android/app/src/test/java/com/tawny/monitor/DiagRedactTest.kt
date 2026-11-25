@@ -46,6 +46,17 @@ class DiagRedactTest {
         assertFalse(out, out.contains("NvM7"))
         assertFalse(out, out.contains("WXXH"))
         assertFalse(out, out.contains("e8a05f"))
+        assertFalse(out, out.contains("Pet"))
+    }
+
+    @Test fun quotedNamesGoWhole() {
+        assertEquals("pair accepted name=<name> lan=-", r("pair accepted name=\"Lou\\\"s cat\" lan=-"))
+        assertEquals("{\"name\":\"<name>\",\"x\":1}", r("{\"name\":\"Mo\\\"chi Bear\",\"x\":1}"))
+    }
+
+    @Test fun uuidsAndUppercaseIdsGo() {
+        assertEquals("bond <id> ok", r("bond 3f9c2a7b-e41d-4a2b-9c1e-0123456789ab ok"))
+        assertEquals("peer <id> left", r("peer 3F9C2A7BE41D left"))
     }
 
     @Test fun namesGo() {
