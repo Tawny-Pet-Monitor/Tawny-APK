@@ -327,9 +327,12 @@ private fun ViewerLive(page: NativeLivePage, s: WatchSession) {
                             // The bit of picture under the fingers stays under
                             // them: the pinch zooms there, and moving both
                             // fingers moves the picture (as app.js zoomAround).
+                            // Zoomed about where the fingers were (the centre
+                            // before this move), then moved with them.
                             val mid = Offset(stage.width / 2f, stage.height / 2f)
+                            val was = c - d - mid
                             val k = z / zoom
-                            pan = keepInside((pan - (c - mid)) * k + (c - mid) + d, z, stage, video.first, video.second)
+                            pan = keepInside((pan - was) * k + was + d, z, stage, video.first, video.second)
                         }
                         zoom = z
                         zoomAt = System.currentTimeMillis()
@@ -346,7 +349,13 @@ private fun ViewerLive(page: NativeLivePage, s: WatchSession) {
                 )
             },
         ) {
-            Video(page, ui.videoW, ui.videoH, digital = if (ui.zoomSupported) 1f else zoom, pan = pan)
+            // The Monitor's lens zoom is in the picture already: no scale or
+            // offset of ours on top.
+            Video(
+                page, ui.videoW, ui.videoH,
+                digital = if (ui.zoomSupported) 1f else zoom,
+                pan = if (ui.zoomSupported) Offset.Zero else pan,
+            )
             if (page.myCamera != null) MyCameraPip(page) { page.myCamera }
             Rail(page, live = ui.phase == WatchUi.Phase.Live, level = level) {
                 // From the Monitor's list, the one way in to who else is watching.
@@ -430,7 +439,8 @@ private suspend fun PointerInputScope.pinch(
                 val f = ev.calculateZoom()
                 val d = ev.calculatePan()
                 if (f != 1f || d != Offset.Zero) {
-                    pinched = true
+                    // Only a change of level is a pinch to tell the Monitor.
+                    if (f != 1f) pinched = true
                     onPinch(ev.calculateCentroid(useCurrent = true), f, d)
                     ev.changes.forEach { it.consume() }
                 }
@@ -459,9 +469,11 @@ internal fun keepInside(pan: Offset, zoom: Float, stage: IntSize, videoW: Int, v
     val (pw, ph) = if (sw / sh > r) sh * r to sh else sw to sw / r
     val k = if (videoW > 0) pw / videoW else 1f
     val edge = zoom * (k + 1f) / 2f
+    // How far the centred picture may move each way: its overhang past one
+    // edge of the stage, less the allowance. None when it barely overhangs.
     fun axis(t: Float, span: Float, view: Float): Float {
-        if (span <= view) return 0f
-        val m = (span - view) / 2f + edge
+        val m = (span - view) / 2f - edge
+        if (m <= 0f) return 0f
         return t.coerceIn(-m, m)
     }
     return Offset(axis(pan.x, zoom * pw, sw), axis(pan.y, zoom * ph, sh))

@@ -165,13 +165,15 @@ object Diag {
      * - A peer's id or key: the long hex the relays and Nostr give phones
      *   (Monitor and Viewer keys, bond ids, relay connection ids). The room id
      *   after `room=` stays: it is a hash, and it lines two phones' logs up.
-     * - A pairing link's key, ticket, code or Monitor key, should one appear.
+     * - A pairing link's key, ticket, code, Monitor key or name, should one
+     *   appear; a UUID, and hex ids in either case.
      * - Names people typed: `name=…`, and `"name"`/`"label"` in a logged frame.
      */
-    private val HEX_ID = Regex("(?<!room=)(?<![0-9A-Za-z])(?=[0-9a-f]*[a-f])[0-9a-f]{8,}(?![0-9A-Za-z])")
-    private val LINK_SECRET = Regex("([?&#](?:k|t|c|np)=)[^&\\s\"]+")
-    private val NAME = Regex("(\\bname=)(\"[^\"]*\"|\\S+)")
-    private val JSON_NAME = Regex("(\"(?:name|label|myName|device)\"\\s*:\\s*)\"[^\"]*\"")
+    private val UUID = Regex("(?<![0-9A-Za-z])[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}(?![0-9A-Za-z])")
+    private val HEX_ID = Regex("(?<!room=)(?<![0-9A-Za-z])(?=[0-9a-fA-F]*[a-fA-F])[0-9a-fA-F]{8,}(?![0-9A-Za-z])")
+    private val LINK_SECRET = Regex("([?&#](?:k|t|c|np|n)=)[^&\\s\"]+")
+    private val NAME = Regex("(\\bname=)(\"(?:[^\"\\\\]|\\\\.)*\"|\\S+)")
+    private val JSON_NAME = Regex("(\"(?:name|label|myName|device)\"\\s*:\\s*)\"(?:[^\"\\\\]|\\\\.)*\"")
     // A home or tailnet host name (*.ts.net, *.local, …) can carry a person's
     // or a household's name.
     private val PRIVATE_HOST = Regex("(?<![\\w.-])[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*\\.(?:ts\\.net|local|lan|home\\.arpa|internal)(?![\\w.-])")
@@ -185,7 +187,7 @@ object Diag {
                 else -> "<ip>"
             }
         }
-        val noSecret = LINK_SECRET.replace(HEX_ID.replace(noIp, "<id>"), "$1<…>")
+        val noSecret = LINK_SECRET.replace(HEX_ID.replace(UUID.replace(noIp, "<id>"), "<id>"), "$1<…>")
         val noName = JSON_NAME.replace(NAME.replace(noSecret, "$1<name>"), "$1\"<name>\"")
         return PRIVATE_HOST.replace(noName, "<private-host>")
     }
@@ -844,7 +846,7 @@ class MainActivity : AppCompatActivity() {
             !p.relayTrusted -> " (NOT adopted: unrecognised host)"
             else -> " (not adopted: own relay set)"
         }
-        Diag.log("shell", "pair accepted name=\"${p.name}\" lan=${p.signal ?: "-"} " +
+        Diag.log("shell", "pair accepted name=${org.json.JSONObject.quote(p.name)} lan=${p.signal ?: "-"} " +
             "relay=${p.relay ?: "-"}$relayNote " +
             "ticket=${if (p.token.isNullOrBlank()) "MISSING" else "yes"} " +
             "code=${if (p.code == null) "none" else "yes"}")
@@ -6439,6 +6441,7 @@ class MainActivity : AppCompatActivity() {
          * behind it, while the resting stop is untouched because there the
          * proportion is zero.
          */
+        var sheetShown = true
         fun applyHeight(h: Int, animated: Boolean) {
             val screen = root.height
             val nat = naturalHeight()
@@ -6446,6 +6449,12 @@ class MainActivity : AppCompatActivity() {
             val peek = peekHeight()
             val ty = (screen - h).toFloat()
             val fade = ((h - peek).toFloat() / (nat - peek).coerceAtLeast(1)).coerceIn(0f, 1f)
+            // Down to its sliver the sheet is out of the way: the tour may run.
+            val shown = fade > 0.02f
+            if (shown != sheetShown) {
+                sheetShown = shown
+                pairSheetShown(shown)
+            }
             val open = ((h - nat).toFloat() / (screen - nat).coerceAtLeast(1)).coerceIn(0f, 1f)
             val lift = barTop * open
             val centre = maxOf(lift, (h - nat).coerceAtLeast(0) / 2f)
@@ -6783,14 +6792,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * A Kotlin string as a JavaScript string literal, for evaluateJavascript.
-     * JSONObject.quote escapes quotes, backslashes and every control character;
-     * a bare carriage return (a pairing link can put one in a channel name) is
-     * a line break inside a JS literal, which made the whole call a syntax
-     * error and left the page unstarted. U+2028/U+2029 were line breaks in
-     * older JavaScript too, so they are escaped as well.
-     */
-    /**
      * The pairing sheet went up or came down over the call. The live page's
      * first-call tour waits while it is up: drawn over the sheet, the tour took
      * the pairing over (dogfood, 2026-11-23).
@@ -6800,6 +6801,14 @@ class MainActivity : AppCompatActivity() {
         livePage?.pairSheet(up)
     }
 
+    /**
+     * A Kotlin string as a JavaScript string literal, for evaluateJavascript.
+     * JSONObject.quote escapes quotes, backslashes and every control character;
+     * a bare carriage return (a pairing link can put one in a channel name) is
+     * a line break inside a JS literal, which made the whole call a syntax
+     * error and left the page unstarted. U+2028/U+2029 were line breaks in
+     * older JavaScript too, so they are escaped as well.
+     */
     private fun jsStr(s: String) =
         org.json.JSONObject.quote(s).replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
 
@@ -6985,7 +6994,7 @@ class MainActivity : AppCompatActivity() {
                         pairStatus?.text = pairSheetStatus().uppercase()
                         pairSheetReset?.invoke()
                         pairOverlay?.visibility = View.VISIBLE
-                        pairSheetShown(true)
+                        pairSheetShown(pairOverlay != null)
                         refreshSystemBars()
                     }
                     // The OS took the camera back (screen off / backgrounded).
