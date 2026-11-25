@@ -143,44 +143,6 @@ internal fun BoxScope.ZoomChip(level: Float, at: Long) {
     }
 }
 
-/** Follow system → light → dark: a small round key above the controls. */
-@Composable
-internal fun BoxScope.ThemeToggle(page: NativeLivePage, pip: Boolean = false) {
-    val t = tokens()
-    // Above the corner picture when there is one (it is 27% of the width,
-    // at most 150 dp, 3:4), not on top of it.
-    val lift = if (pip) {
-        androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.let { w ->
-            (minOf(w * 0.27f, 150f) * 4f / 3f + 16f).dp
-        }
-    } else 0.dp
-    val now = stringResource(
-        when (page.themeMode) {
-            "dark" -> R.string.w_theme_dark
-            "light" -> R.string.w_theme_light
-            else -> R.string.w_theme_system
-        },
-    )
-    val change = stringResource(R.string.w_theme_change)
-    Box(
-        Modifier.align(Alignment.BottomEnd).padding(end = (5 + page.insets.right).dp, bottom = lift)
-            .size(48.dp).clip(CircleShape)
-            .clickable(role = Role.Button, onClickLabel = change, onClick = page::cycleTheme)
-            .semantics { contentDescription = "$change — $now" },
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(
-            Modifier.size(34.dp).clip(CircleShape).background(t.panel.copy(alpha = 0.92f)).border(1.dp, t.line, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                when (page.themeMode) { "dark" -> "☾"; "light" -> "☀\uFE0E"; else -> "◐" },
-                color = t.dim, fontSize = 16.sp, style = MaterialTheme.typography.bodyLarge,
-            )
-        }
-    }
-}
-
 /** "Who's here": everyone on this camera, by the name they gave and their phone. */
 @Composable
 internal fun WhoSheet(page: NativeLivePage, list: List<Who>?, onClose: () -> Unit) {

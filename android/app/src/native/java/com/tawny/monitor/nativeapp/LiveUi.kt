@@ -199,10 +199,9 @@ private fun StationLive(page: NativeLivePage) {
             }
             if (ui.talking) TalkFlag(page)
             ZoomChip(ui.zoom, ui.zoomAt)
-            ThemeToggle(page, pip = ui.featured != null && ui.cameraOn)
             // One card at a time: the oldest phone whose code hasn't been looked at.
             val card = connected.firstOrNull { !it.checked && it.check != SecurityCheck.Pending }
-            TourWhen(page, "station", ready = connected.isNotEmpty(), cardUp = card != null, steps = STATION_TOUR)
+            TourWhen(page, "station", ready = connected.isNotEmpty(), cardUp = card != null || page.pairUp || page.whoOpen, steps = STATION_TOUR)
             card?.let { v ->
                 SasCard(
                     note = when (v.check) {
@@ -337,7 +336,6 @@ private fun ViewerLive(page: NativeLivePage, s: WatchSession) {
                 Tag(page.start?.name ?: "", keepCase = true)
             }
             ZoomChip(zoom, zoomAt)
-            ThemeToggle(page, pip = page.myCamera != null)
             // A centred note while there is no picture to trust.
             val note = when {
                 ui.paused -> stringResource(R.string.w_status_monitor_paused)
@@ -350,7 +348,7 @@ private fun ViewerLive(page: NativeLivePage, s: WatchSession) {
             TalkFab(page, enabled = ui.phase == WatchUi.Phase.Live, talking = ui.talking, onTalk = s::setTalking, t = t)
             // Off the Wi-Fi, the first time with this Monitor: compare the code.
             val cardUp = !asked && ui.check != SecurityCheck.Pending
-            TourWhen(page, "viewer", ready = ui.phase == WatchUi.Phase.Live, cardUp = cardUp, steps = VIEWER_TOUR)
+            TourWhen(page, "viewer", ready = ui.phase == WatchUi.Phase.Live, cardUp = cardUp || page.whoOpen, steps = VIEWER_TOUR)
             if (cardUp) {
                 SasCard(
                     note = if (ui.check is SecurityCheck.Code) stringResource(R.string.w_sas_viewer_note)

@@ -2780,6 +2780,7 @@ class MainActivity : AppCompatActivity() {
         pairStatus?.text = pairSheetStatus().uppercase()
         pairSheetReset?.invoke()
         pairOverlay?.visibility = View.VISIBLE
+        pairSheetShown(true)
         // Coming back to the sheet after a while: whatever is drawn on it may
         // have lapsed while nobody was looking. The tick below notices on its
         // first run and mints a fresh one.
@@ -5891,6 +5892,7 @@ class MainActivity : AppCompatActivity() {
             pairOverlay = buildPairOverlay(name, pairPayload)
             root.addView(pairOverlay, FrameLayout.LayoutParams(MP, MP))
             refreshSystemBars()
+            page.pairSheet(true)
         }
         if (role == "station") swipeNav(back = { confirmEndCall() }, forward = null)
         pushSafeInsets()
@@ -5998,6 +6000,9 @@ class MainActivity : AppCompatActivity() {
                 if (kicked) return
                 kicked = true
                 pushSafeInsets()      // before the page paints its control rail
+                // The sheet went up before the page could hear it: say so once
+                // tawnyStart has run (evaluations run in order).
+                v.post { pairSheetShown(pairOverlay?.visibility == View.VISIBLE) }
                 v.evaluateJavascript(
                     "window.tawnyStart && window.tawnyStart(" +
                         "${jsStr(role)},${jsStr(key)},${jsStr(name)}," +
@@ -6785,6 +6790,16 @@ class MainActivity : AppCompatActivity() {
      * error and left the page unstarted. U+2028/U+2029 were line breaks in
      * older JavaScript too, so they are escaped as well.
      */
+    /**
+     * The pairing sheet went up or came down over the call. The live page's
+     * first-call tour waits while it is up: drawn over the sheet, the tour took
+     * the pairing over (dogfood, 2026-11-23).
+     */
+    private fun pairSheetShown(up: Boolean) {
+        web?.evaluateJavascript("window.tawnyPairSheet && window.tawnyPairSheet($up)", null)
+        livePage?.pairSheet(up)
+    }
+
     private fun jsStr(s: String) =
         org.json.JSONObject.quote(s).replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
 
@@ -6959,6 +6974,7 @@ class MainActivity : AppCompatActivity() {
                         // still room, because that is the whole "add another
                         // phone" affordance.
                         pairOverlay?.visibility = View.GONE
+                        pairSheetShown(false)
                         syncPairChip()
                         refreshSystemBars()
                     }
@@ -6969,6 +6985,7 @@ class MainActivity : AppCompatActivity() {
                         pairStatus?.text = pairSheetStatus().uppercase()
                         pairSheetReset?.invoke()
                         pairOverlay?.visibility = View.VISIBLE
+                        pairSheetShown(true)
                         refreshSystemBars()
                     }
                     // The OS took the camera back (screen off / backgrounded).

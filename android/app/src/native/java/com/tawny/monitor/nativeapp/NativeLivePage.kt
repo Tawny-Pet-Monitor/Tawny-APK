@@ -68,6 +68,8 @@ class NativeLivePage(private val activity: Activity, private val shell: LiveShel
 
     /** A short line over the picture (the theme toggle's name for itself). */
     var toast by mutableStateOf<String?>(null)
+    /** The shell's pairing sheet is over the call: the tour waits for it. */
+    var pairUp by mutableStateOf(false)
     var whoOpen by mutableStateOf(false)
     var myName by mutableStateOf("")
         private set
@@ -205,20 +207,6 @@ class NativeLivePage(private val activity: Activity, private val shell: LiveShel
         }
     }
 
-    /** Follow system → light → dark, as the web toggle; the shell keeps the choice. */
-    fun cycleTheme() {
-        val next = THEMES[(THEMES.indexOf(themeMode) + 1) % THEMES.size]
-        themeMode = next
-        post("theme", "mode" to next)
-        toast = activity.getString(
-            when (next) {
-                "dark" -> com.tawny.monitor.R.string.w_theme_dark
-                "light" -> com.tawny.monitor.R.string.w_theme_light
-                else -> com.tawny.monitor.R.string.w_theme_system
-            },
-        )
-    }
-
     /** "Who's here" → Change my name: kept by the shell, told to the other end. */
     fun rename(name: String) {
         val clean = MonitorEngine.cleanName(name)
@@ -322,6 +310,10 @@ class NativeLivePage(private val activity: Activity, private val shell: LiveShel
     }
 
     // ---- LivePage: the shell's calls
+
+    override fun pairSheet(up: Boolean) {
+        pairUp = up
+    }
 
     override fun pairCode(code: String, expiresMs: Long) {
         scope.launch(Dispatchers.IO) { MonitorState.engine?.setPairCode(code, expiresMs) }

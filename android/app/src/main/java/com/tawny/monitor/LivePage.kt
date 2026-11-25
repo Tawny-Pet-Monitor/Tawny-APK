@@ -23,6 +23,9 @@ interface LivePage {
     /** Monitor: the code in the QR changed (`tawnyPairCode`). */
     fun pairCode(code: String, expiresMs: Long)
 
+    /** Monitor: the shell's pairing sheet went up or down (`tawnyPairSheet`). */
+    fun pairSheet(up: Boolean) {}
+
     /** Monitor: this phone's battery (`tawnyBattery`), for the Viewers. */
     fun battery(pct: Int, charging: Boolean)
 
