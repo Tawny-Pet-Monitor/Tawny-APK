@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Tawny Native</string>
+    <string name="monitor_channel">Monitoring</string>
+    <string name="monitor_channel_about">Shows while this phone is the Monitor, with a button to stop.</string>
+    <string name="monitor_notice_title">Monitoring</string>
+    <string name="monitor_notice_idle">Waiting for a viewer. The camera is off until someone watches.</string>
+    <string name="monitor_notice_live">Someone is watching. The camera and microphone are on.</string>
+    <string name="monitor_notice_stop">Stop</string>
+</resources>
