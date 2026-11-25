@@ -2,6 +2,36 @@
 
 Newest first. Linux AppImage and Flatpak.
 
+## 0.2.0
+
+Changes since 0.1.13. The desktop app is rebuilt natively, in Rust with Slint,
+on the same engine as Tawny Native for Android (tawny-core). Linux AppImage
+and Flatpak, and a Windows installer.
+
+**New**
+- No web browser inside any more: Tawny starts faster and uses less memory.
+  Every screen stays where it was.
+- Your channels and pairings come across from 0.1.13 on their own, the
+  first time it starts.
+- Zoom the picture with the mouse wheel, where the pointer is, and drag it
+  to see any part of the room.
+- Windows: an installer that replaces the previous Tawny in place, with no
+  administrator rights needed.
+
+**Fixed**
+- A call whose network path dies while the signalling stays up repairs
+  itself, and finds a Monitor that restarted.
+- A phone Monitor held upright shows the right way up on every Viewer,
+  including Safari on an iPhone.
+- On a computer without GPU drivers, Tawny draws with its own software
+  renderer instead of an emulated OpenGL that kept several cores busy.
+
+**Security**
+- Offers and answers on the Wi-Fi way are signed with the channel key, and a
+  device turned away for an unsigned one is refused at the handshake.
+- Only software video codecs, so no hardware decoder can end the app
+  mid-call.
+
 ## 0.1.13
 
 Changes since 0.1.12. Same web client as Tawny for Android 1.0.5 (build 48, 85f235b).
