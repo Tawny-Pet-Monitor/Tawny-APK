@@ -42,6 +42,8 @@ fun localOrProject(key: String): String? =
     localProps.getProperty(key) ?: (project.findProperty(key) as String?)
 val rendezvousUrl = localOrProject("tawny.rendezvousUrl").orEmpty()
 val turnMode = localOrProject("tawny.turnMode") ?: "auto"
+// The native build type as the GitHub edition's release (see `native` below).
+val nativeRelease = localOrProject("tawny.nativeRelease") == "true"
 // Nostr relays every build meets on (public/nostr/transport.js), Nostr first
 // with the rendezvous as the backup. Checked 2026-11-13 to carry ephemeral
 // gift wraps (kind 21059) round trip; damus.io, nos.lol and nostr.mom refuse
@@ -165,11 +167,28 @@ android {
         // by Tawny DevOps/tools/native-android. Installs beside the others as
         // "Tawny Native" (com.tawny.monitor.native). Its code, the generated
         // bindings and the per-ABI libraries live in src/native/.
+        //
+        // With -Ptawny.nativeRelease=true it is the GitHub edition instead:
+        // "Tawny (GitHub)", com.tawny.monitor.github, release-signed, so it
+        // updates the WebView GitHub app in place and its pairings come
+        // across (JsMigration). Not minified: UniFFI's JNA bindings and
+        // libwebrtc reach their classes by name. Built unsigned on the build
+        // machine and signed here (`native-android --release`).
         create("native") {
-            initWith(getByName("debug"))
-            applicationIdSuffix = ".native"
-            versionNameSuffix = "-native"
-            matchingFallbacks += listOf("debug")
+            if (nativeRelease) {
+                initWith(getByName("release"))
+                isMinifyEnabled = false
+                isShrinkResources = false
+                applicationIdSuffix = ".github"
+                matchingFallbacks += listOf("release")
+                resValue("string", "app_name", "Tawny (GitHub)")
+            } else {
+                initWith(getByName("debug"))
+                applicationIdSuffix = ".native"
+                versionNameSuffix = "-native"
+                matchingFallbacks += listOf("debug")
+                resValue("string", "app_name", "Tawny Native")
+            }
         }
         create("github") {
             initWith(getByName("release"))

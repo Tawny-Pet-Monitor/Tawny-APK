@@ -2,6 +2,38 @@
 
 Newest first. Google Play builds.
 
+## 1.1.0 (build 49)
+
+Changes since 1.0.5. The GitHub edition ("Tawny (GitHub)") rebuilt on Tawny's
+native engine (tawny-core, in Rust). It updates 1.0.5 from GitHub in place.
+Google Play stays on 1.0.5 for now.
+
+**New**
+- Calls run on Tawny's own native engine instead of a web page inside the app.
+  Every screen stays where it was, and your pairings and channels come across
+  the first time it starts.
+- Pinch to zoom where your fingers are, and move the picture to see any part
+  of the room.
+
+**Fixed**
+- A call whose network path drops while the signalling stays up repairs
+  itself, and finds a Monitor that restarted.
+- A phone Monitor held upright shows the right way up on every Viewer,
+  including Safari on an iPhone.
+- The light and dark switch is no longer on the call screen, just above End
+  call.
+- The first-call walkthrough waits until the pairing code and the "What
+  should the others call you?" sheet are out of the way.
+
+**Privacy**
+- A diagnostics report you choose to send no longer carries addresses, device
+  ids or keys, pairing-code secrets, home-network names or the names you gave
+  your devices or pets. The screen shows exactly what would be sent.
+
+**Known limits**
+- 64-bit phones only (arm64); the WebView edition 1.0.5 stays available for
+  older 32-bit phones.
+
 ## 1.0.5 (build 48)
 
 Changes since 1.0.4. Released as the GitHub APK first; not on Google Play yet.

@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">Tawny Native</string>
     <string name="monitor_channel">Monitoring</string>
     <string name="monitor_channel_about">Shows while this phone is the Monitor, with a button to stop.</string>
     <string name="monitor_notice_title">Monitoring</string>
     <string name="monitor_notice_idle">Waiting for a viewer. The camera is off until someone watches.</string>
     <string name="monitor_notice_live">Someone is watching. The camera and microphone are on.</string>
     <string name="monitor_notice_stop">Stop</string>
+    <!-- This build's own update notes: what changed in the native app. -->
+    <string-array name="whatsnew_notes">
+        <item>New: calls now run on Tawny\'s own native engine instead of a web page inside the app. Every screen stays where it was, and your pairings come across</item>
+        <item>New: pinch to zoom where your fingers are, and move the picture to see any part of the room</item>
+        <item>Fixed: a call repairs itself when its network path drops, and finds a Monitor that restarted</item>
+        <item>Fixed: a phone Monitor held upright shows the right way up on every Viewer, an iPhone included</item>
+    </string-array>
 </resources>
