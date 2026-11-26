@@ -30,9 +30,9 @@ Google Play stays on 1.0.5 for now.
   ids or keys, pairing-code secrets, home-network names or the names you gave
   your devices or pets. The screen shows exactly what would be sent.
 
-**Known limits**
-- 64-bit phones only (arm64); the WebView edition 1.0.5 stays available for
-  older 32-bit phones.
+**Older phones**
+- On a 32-bit phone the native engine doesn't load, and calls keep running on
+  the web engine, as in 1.0.5.
 
 ## 1.0.5 (build 48)
 
