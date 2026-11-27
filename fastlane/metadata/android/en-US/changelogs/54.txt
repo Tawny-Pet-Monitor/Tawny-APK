@@ -1,0 +1,5 @@
+• Security: every offer and answer is signed with the channel key, and a forged one is refused. On your Wi-Fi, a call whose other end doesn't sign yet shows the safety code.
+• Pinch to zoom where your fingers are, then drag to any edge of the picture.
+• The light and dark switch is no longer on the call screen, just above End call.
+• Privacy: a diagnostics report you choose to send leaves out addresses, device ids and keys, pairing-code secrets and names.
+• A new update screen shows what changed.

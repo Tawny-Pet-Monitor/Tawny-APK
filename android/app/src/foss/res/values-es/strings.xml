@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="whatsnew_items">
-        <item>relay|Emparejar sin depender de un servidor|Tus dispositivos se encuentran primero a través de relés Nostr, con el servicio de Tawny como respaldo.</item>
-        <item>server|Usa tus propios relés|En Servidores: agrega los tuyos, mira cuáles funcionan o usa solo los tuyos.</item>
-        <item>lock|Los códigos viejos no entran|Un código de emparejamiento caducado o un QR antiguo ya no conecta.</item>
+        <item>lock|Llamadas firmadas en tu Wi-Fi|Cada oferta y respuesta va firmada con la clave del canal, así que nadie más en la red puede colarse.</item>
+        <item>zoom|Zoom donde pellizcas|Luego arrastra para mirar cualquier rincón de la habitación.</item>
+        <item>star|Terminar sin sustos|El interruptor de claro y oscuro salió de la pantalla de llamada, donde estaba justo encima de Terminar.</item>
     </string-array>
 </resources>
