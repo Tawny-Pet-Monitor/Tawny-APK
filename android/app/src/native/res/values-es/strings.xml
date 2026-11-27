@@ -8,6 +8,7 @@
     <string name="monitor_notice_idle">Esperando a un visor. La cámara está apagada hasta que alguien mire.</string>
     <string name="monitor_notice_live">Alguien está mirando. La cámara y el micrófono están encendidos.</string>
     <string name="monitor_notice_stop">Detener</string>
+    <string name="perm_disclose_cam_body">Este teléfono usará su cámara y su micrófono para transmitir a tu mascota a tu otro teléfono. Sigue monitoreando con la pantalla apagada, con una notificación visible, hasta que toques Detener. La cámara y el micrófono solo se encienden mientras alguien mira. El video y el sonido se envían cifrados, directamente entre tus dispositivos, y nunca se graban ni se guardan en ningún lugar.</string>
     <string-array name="whatsnew_items">
         <item>screenoff|Pantalla apagada, sigue vigilando|El Monitor sigue vigilando con la pantalla apagada. No hace falta dejarla encendida.</item>
         <item>bolt|Llamadas que se arreglan solas|Un motor nuevo por dentro: si se cae el Wi-Fi, la llamada vuelve sola.</item>
