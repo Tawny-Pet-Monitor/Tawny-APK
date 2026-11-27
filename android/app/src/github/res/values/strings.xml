@@ -3,9 +3,10 @@
     <!-- The GitHub Releases edition, installed beside the Play one: tell them apart. -->
     <string name="app_name" translatable="false">Tawny (GitHub)</string>
     <!-- This build's own update notes (it has the full tip flow; Play keeps the hand-off). -->
-    <string-array name="whatsnew_notes">
-        <item>New: your devices now find each other through Nostr relays first, with Tawny\'s own service as the backup, so pairing no longer depends on one server</item>
-        <item>New in Servers: use your own relays, see which ones work, or use only your relays</item>
-        <item>Security: an expired pairing code, or an old QR code, can no longer be used to connect</item>
+    <!-- "icon|Headline|One line": icons are screenoff, bolt, zoom, upright, relay, server, lock, star. -->
+    <string-array name="whatsnew_items">
+        <item>relay|Pairing that never hangs on one server|Your devices find each other through Nostr relays first, with Tawny\'s own service as the backup.</item>
+        <item>server|Bring your own relays|In Servers: add your own, see which ones work, or use only yours.</item>
+        <item>lock|Old codes can\'t get in|An expired pairing code or an old QR code no longer connects.</item>
     </string-array>
 </resources>
