@@ -3,6 +3,37 @@
 Newest first. The self-hosted server image (`ghcr.io/tawny-pet-monitor/tawny`;
 `ghcr.io/pressf4me/tawny` up to 2.2.12).
 
+## 2.2.14
+
+Changes since 2.2.13. Same web client as Tawny for Android 1.1.0's web engine.
+
+**New**
+- A new update board: the changes that matter as cards, under the app's icon.
+- A Viewer's zoom follows the fingers: pinch where you want to look, then
+  drag to any edge of the picture (never into the bars). A computer's browser
+  zooms with the mouse wheel and drags with the mouse.
+
+**Fixed**
+- A browser keeps the Monitor's Wi-Fi address with the channel, so a reload or
+  a later visit reaches it straight away instead of waiting on the relays.
+- The light and dark switch is no longer on the call screen, just above End
+  call.
+- The first-call walkthrough waits until the pairing code and the name
+  prompt are out of the way.
+
+**Security**
+- Every offer and answer is signed with the channel key, and a forged one is
+  refused. On the home network, a call whose other end doesn't sign yet shows
+  the safety code, every time.
+
+**Privacy**
+- A diagnostics report you choose to send leaves out addresses, device ids
+  and keys, pairing-code secrets, home-network names and the names you gave
+  your devices or pets.
+
+**Upgrading**
+- `docker compose pull && docker compose up -d`. Nothing to change.
+
 ## 2.2.13
 
 Changes since 2.2.12. Same web client as Tawny for Android 1.0.5 (build 48, 85f235b).
