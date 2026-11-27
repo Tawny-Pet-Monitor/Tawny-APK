@@ -134,7 +134,8 @@ app's identity on the Play Store, so please use your own if you publish a fork.
 ## Repository layout
 
 ```
-android/                 the Android app (native shell + bundled web client)
+android/                 the Android app (native shell + bundled web client;
+                         the GitHub and Play editions run calls on tawny-core)
 public/                  the web client — index.html, style.css, app.js, i18n.js
 public/vendor/           QR encode/decode libraries, vendored for offline use
 public/sounds/           chime clips (sounds/_src/ holds the recordings; not shipped)
@@ -145,6 +146,12 @@ README-ANDROID.md        building and running the Android app
 privacy-policy.md        privacy policy source text
 SECURITY.md              threat model, hardening, residual risk
 ```
+
+From 1.1.0, calls in the GitHub and Play editions run on **tawny-core**, Tawny's shared
+engine in Rust (pairing, signalling, encryption and the call itself), in its own
+repo: [**Tawny-Core**](https://github.com/Tawny-Pet-Monitor/Tawny-Core). The
+build compiles it into the app; the screens stay native Kotlin. On a 32-bit
+phone, and in the F-Droid edition, calls run on the web client in `public/`.
 
 ## 🤓 Self-hosting
 
