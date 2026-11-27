@@ -6,8 +6,6 @@
     <string name="monitor_notice_idle">Waiting for a viewer. The camera is off until someone watches.</string>
     <string name="monitor_notice_live">Someone is watching. The camera and microphone are on.</string>
     <string name="monitor_notice_stop">Stop</string>
-    <!-- Overrides the shell's: the native Monitor keeps running with the screen off. -->
-    <string name="perm_disclose_cam_body">This phone will use its camera and microphone to stream your pet to your other phone. It keeps monitoring with the screen off, with a notification showing, until you tap Stop. The camera and microphone are on only while someone is watching. The video and sound are sent encrypted, directly between your devices, and are never recorded or stored anywhere.</string>
     <!-- This build's own update board: what changed in the native app. -->
     <string-array name="whatsnew_items">
         <item>screenoff|Screen off, still watching|The Monitor keeps watching with its screen off. No need to leave it lit.</item>
