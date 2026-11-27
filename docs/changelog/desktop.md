@@ -17,6 +17,7 @@ and Flatpak, and a Windows installer.
   to see any part of the room.
 - Windows: an installer that replaces the previous Tawny in place, with no
   administrator rights needed.
+- After an update, a board shows what changed, once.
 
 **Fixed**
 - A call whose network path dies while the signalling stays up repairs
