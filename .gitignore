@@ -47,3 +47,6 @@ node_modules/
 
 # Original chime recordings: not redistributable as loose files (see public/sounds/README.md).
 public/sounds/_src/
+
+# Android Studio's own files on this machine (never part of a commit)
+/.idea/
