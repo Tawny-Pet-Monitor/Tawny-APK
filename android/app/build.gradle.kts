@@ -44,6 +44,8 @@ val rendezvousUrl = localOrProject("tawny.rendezvousUrl").orEmpty()
 val turnMode = localOrProject("tawny.turnMode") ?: "auto"
 // The native build type as the GitHub edition's release (see `native` below).
 val nativeRelease = localOrProject("tawny.nativeRelease") == "true"
+// With nativeRelease: the Google Play edition instead (com.tawny.monitor, "Tawny").
+val nativePlay = nativeRelease && localOrProject("tawny.nativePlay") == "true"
 // Nostr relays every build meets on (public/nostr/transport.js), Nostr first
 // with the rendezvous as the backup. Checked 2026-11-13 to carry ephemeral
 // gift wraps (kind 21059) round trip; damus.io, nos.lol and nostr.mom refuse
@@ -94,6 +96,9 @@ android {
         buildConfigField("String", "NOSTR_RELAYS", "\"${nostrRelays.joinToString(",")}\"")
         // Extra connect-src hosts beyond the relays; only devops has one (its mirror).
         buildConfigField("String", "NOSTR_HOSTS", "\"\"")
+        // The Google Play edition: the tip sheet stays a plain hand-off there
+        // (Play Payments policy). True for `release` and the native Play build.
+        buildConfigField("boolean", "PLAY_EDITION", "false")
     }
 
     buildFeatures {
@@ -127,6 +132,7 @@ android {
                 "proguard-rules.pro"
             )
             if (hasSigning) signingConfig = signingConfigs.getByName("release")
+            buildConfigField("boolean", "PLAY_EDITION", "true")
             // The app ships no native code of its own — CameraX (the QR
             // scanner) is what pulls in a couple of prebuilt .so files, and
             // Play's "upload debug symbols" warning on every release is
@@ -174,14 +180,22 @@ android {
         // across (JsMigration). Not minified: UniFFI's JNA bindings and
         // libwebrtc reach their classes by name. Built unsigned on the build
         // machine and signed here (`native-android --release`).
+        //
+        // Adding -Ptawny.nativePlay=true makes it the Google Play edition:
+        // com.tawny.monitor as "Tawny", the same app id and name as the Play
+        // listing, so it updates the WebView Play app in place. Built as an
+        // AAB (`:app:bundleNative`, `native-android --play`).
         create("native") {
             if (nativeRelease) {
                 initWith(getByName("release"))
                 isMinifyEnabled = false
                 isShrinkResources = false
-                applicationIdSuffix = ".github"
                 matchingFallbacks += listOf("release")
-                resValue("string", "app_name", "Tawny (GitHub)")
+                buildConfigField("boolean", "PLAY_EDITION", nativePlay.toString())
+                if (!nativePlay) {
+                    applicationIdSuffix = ".github"
+                    resValue("string", "app_name", "Tawny (GitHub)")
+                }
             } else {
                 initWith(getByName("debug"))
                 applicationIdSuffix = ".native"
@@ -194,6 +208,7 @@ android {
             initWith(getByName("release"))
             applicationIdSuffix = ".github"
             matchingFallbacks += listOf("release")
+            buildConfigField("boolean", "PLAY_EDITION", "false")
         }
     }
 

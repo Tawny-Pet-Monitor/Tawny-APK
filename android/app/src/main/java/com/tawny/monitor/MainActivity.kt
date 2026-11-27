@@ -3716,14 +3716,15 @@ class MainActivity : AppCompatActivity() {
     // ---------------------------------------------------- tip in bitcoin, full flow
 
     /**
-     * Which tip flow this build shows. Play ("release") keeps the hand-off
+     * Which tip flow this build shows. Play (`release`, and the native Play
+     * build: BuildConfig.PLAY_EDITION) keeps the hand-off
      * above: Play's Payments policy only tolerates an outside contribution
      * that the app merely points at, so there the wallet picks the amount and
      * Tawny never sees an invoice. The GitHub APK (and debug) get the same flow
      * as the web builds: an amount, an invoice from the tip address, a QR or
      * "Open wallet", and a thank-you when the zap receipt arrives (TipZap.kt).
      */
-    private val FULL_TIP_FLOW = BuildConfig.BUILD_TYPE != "release"
+    private val FULL_TIP_FLOW = !BuildConfig.PLAY_EDITION
     private val TIP_USD = intArrayOf(2, 5, 10)
     private val TIP_SATS_OFFLINE = longArrayOf(2000, 5000, 10000)
     private var tipPrice: Double? = null
