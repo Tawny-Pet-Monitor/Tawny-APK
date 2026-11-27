@@ -8,10 +8,11 @@
     <string name="monitor_notice_idle">Esperando a un visor. La cámara está apagada hasta que alguien mire.</string>
     <string name="monitor_notice_live">Alguien está mirando. La cámara y el micrófono están encendidos.</string>
     <string name="monitor_notice_stop">Detener</string>
-    <string-array name="whatsnew_notes">
-        <item>Nuevo: las llamadas ahora funcionan con el motor nativo de Tawny en lugar de una página web dentro de la app. Todas las pantallas siguen donde estaban, y tus emparejamientos se conservan</item>
-        <item>Nuevo: pellizca para hacer zoom donde están tus dedos y mueve la imagen para ver cualquier parte de la habitación</item>
-        <item>Corregido: una llamada se repara sola cuando pierde su camino de red, y encuentra un Monitor que se reinició</item>
-        <item>Corregido: un Monitor en un teléfono vertical se ve derecho en todos los Visores, también en un iPhone</item>
+    <string-array name="whatsnew_items">
+        <item>screenoff|Pantalla apagada, sigue vigilando|El Monitor sigue vigilando con la pantalla apagada. No hace falta dejarla encendida.</item>
+        <item>bolt|Llamadas que se arreglan solas|Un motor nuevo por dentro: si se cae el Wi-Fi, la llamada vuelve sola.</item>
+        <item>zoom|Zoom donde pellizcas|Luego arrastra para mirar cualquier rincón de la habitación.</item>
+        <item>upright|Siempre derecho|Un teléfono vertical se ve derecho en todas las pantallas, también en iPhone.</item>
     </string-array>
+    <string name="whatsnew_kept">Tus mascotas y emparejamientos se conservaron.</string>
 </resources>

@@ -225,6 +225,7 @@ object Diag {
 object Type {
     const val WORDMARK = 46f     // the welcome screen's "Tawny"
     const val WORDMARK_SM = 28f  // the same mark on a secondary screen
+    const val BOARD = 32f        // the update board's headline
     const val TITLE = 27f        // screen title
     const val PILL = 17f         // button label
     const val CARD_TITLE = 20f   // title inside a card
@@ -4688,9 +4689,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * "Tawny just got better": what changed in a line or three, where the
-     * whole changelog lives, a thank-you, and the same two ways to chip in as
-     * About. Nothing on it unlocks anything — see [SUPPORT_URL].
+     * "Tawny just got better", the board shown once after an update: a glowing
+     * hero (the app's icon on slow rays, the version on a tag), the changes
+     * that matter most as cards (an icon, a short headline, one plain line,
+     * from `whatsnew_items` as "icon|Headline|Line"), an optional line saying
+     * what was kept, "Let's go", where the whole changelog lives, and a quiet
+     * line about support. Nothing on it unlocks anything — see [SUPPORT_URL].
      *
      * Its own full-window dialog rather than [themedDialog]: the confetti has
      * to fall across the whole screen, not inside the card, so the scrim is
@@ -4698,83 +4702,139 @@ class MainActivity : AppCompatActivity() {
      */
     private fun showWhatsNew() {
         Diag.log("app", "update board shown for ${BuildConfig.VERSION_NAME}")
+        val pad = dp(18)
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            background = roundRect(Hue.PANEL, Hue.LINE, Radius.CARD)
-            val p = dp(22); setPadding(p, dp(26), p, dp(14))
+            background = roundRect(Hue.PANEL, Hue.LINE, dp(Radius.CARD + 10))
+            clipToOutline = true                   // the hero's glow keeps to the corners
             isClickable = true                     // taps on the card stay on it
         }
-        card.addView(IconView(this, "star", behind = Hue.PANEL, tint = Hue.BERRY).apply {
-            layoutParams = LinearLayout.LayoutParams(dp(46), dp(46))
+        // Everything under the hero, which itself runs edge to edge.
+        val body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(pad, 0, pad, dp(14))
+        }
+        // "1.1.0" → "1.1": the tag is a headline, not a build number.
+        val short = BuildConfig.VERSION_NAME.substringBefore('-').removeSuffix(".0")
+        card.addView(WhatsNewHero(this, animScale, short).apply {
+            contentDescription = getString(R.string.whatsnew_eyebrow, BuildConfig.VERSION_NAME)
+            layoutParams = LinearLayout.LayoutParams(MP, dp(128))
         })
-        card.addView(TextView(this).apply {
-            text = getString(R.string.whatsnew_eyebrow, BuildConfig.VERSION_NAME).uppercase()
-            setTextColor(Hue.DIM)
-            textSize = Type.LABEL
-            letterSpacing = 0.16f
-            typeface = uiFontSemi
-            gravity = Gravity.CENTER
-            setPadding(0, dp(12), 0, 0)
-        })
-        card.addView(TextView(this).apply {
+        card.addView(body, LinearLayout.LayoutParams(MP, WC))
+        body.addView(TextView(this).apply {
             text = getString(R.string.whatsnew_title)
             setTextColor(Hue.TEXT)
-            textSize = Type.WORDMARK_SM
+            textSize = Type.BOARD
             typeface = titleFont
             gravity = Gravity.CENTER
             setLineSpacing(0f, Type.LEAD_TIGHT)
-            setPadding(0, dp(4), 0, 0)
+            setPadding(0, dp(6), 0, dp(6))
+            isFocusable = true
+            androidx.core.view.ViewCompat.setAccessibilityHeading(this, true)
         })
-
-        val notes = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = roundRect(Hue.BG, Hue.LINE, Radius.CONTROL)
-            val p = dp(14); setPadding(p, dp(10), p, dp(10))
-            layoutParams = LinearLayout.LayoutParams(MP, WC).also { it.topMargin = dp(16) }
-        }
-        resources.getStringArray(R.array.whatsnew_notes).forEach { note ->
-            notes.addView(LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                setPadding(0, dp(5), 0, dp(5))
-                addView(TextView(this@MainActivity).apply {
-                    text = "✦"
-                    setTextColor(Hue.BERRY)
-                    textSize = Type.SUB
-                    layoutParams = LinearLayout.LayoutParams(dp(22), WC)
-                })
-                addView(TextView(this@MainActivity).apply {
-                    text = note
-                    setTextColor(Hue.TEXT)
-                    textSize = Type.SUB
-                    typeface = uiFont
-                    setLineSpacing(0f, 0.95f)
-                    layoutParams = LinearLayout.LayoutParams(0, WC, 1f)
-                })
-            })
-        }
-        card.addView(notes)
-        card.addView(link(getString(R.string.whatsnew_changelog) + "  ↗") {
-            openExternal(CHANGELOG_URL)
-        }.apply {
-            setTextColor(Hue.BERRY)
-            layoutParams = lp(topMargin = 4, centerH = true)
-        })
-
-        card.addView(TextView(this).apply {
-            text = getString(R.string.whatsnew_thanks)
+        body.addView(TextView(this).apply {
+            text = getString(R.string.whatsnew_sub)
             setTextColor(Hue.DIM)
             textSize = Type.SUB
             typeface = uiFont
             gravity = Gravity.CENTER
-            setLineSpacing(0f, 1.05f)
-            setPadding(dp(4), dp(6), dp(4), 0)
+            setPadding(0, 0, 0, dp(12))
         })
-        card.addView(supportButton { whatsNewDialog?.dismiss(); lnFromAbout = false; showSupport() }.apply {
+
+        // A light card on white, a lifted one on the dark panel.
+        val night = androidx.core.graphics.ColorUtils.calculateLuminance(Hue.PANEL) < 0.5
+        val itemFill = if (night) Hue.RAISE else Hue.BG
+        resources.getStringArray(R.array.whatsnew_items).forEach { raw ->
+            val parts = raw.split('|', limit = 3)
+            val (kind, head, line) = if (parts.size == 3) Triple(parts[0], parts[1], parts[2])
+                else Triple("star", "", raw)
+            body.addView(LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                background = roundRect(itemFill, Hue.LINE, Radius.CARD)
+                setPadding(dp(12), dp(9), dp(12), dp(9))
+                layoutParams = LinearLayout.LayoutParams(MP, WC).also { it.topMargin = dp(8) }
+                // Read out as one: "Screen off, still watching. The Monitor…"
+                isFocusable = true
+                contentDescription = if (head.isEmpty()) line else "$head. $line"
+                addView(FrameLayout(this@MainActivity).apply {
+                    background = roundRect(Hue.BERRY, Hue.BERRY, dp(14))
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                    addView(LineIcon(this@MainActivity, kind, Hue.ON_ACCENT),
+                        FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER))
+                    layoutParams = LinearLayout.LayoutParams(dp(46), dp(46))
+                })
+                addView(LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.VERTICAL
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+                    layoutParams = LinearLayout.LayoutParams(0, WC, 1f).also { it.leftMargin = dp(12) }
+                    if (head.isNotEmpty()) addView(TextView(this@MainActivity).apply {
+                        text = head
+                        setTextColor(Hue.TEXT)
+                        textSize = Type.BODY
+                        typeface = uiFontSemi
+                        includeFontPadding = false
+                        setPadding(0, 0, 0, dp(2))
+                    })
+                    addView(TextView(this@MainActivity).apply {
+                        text = line
+                        setTextColor(if (head.isEmpty()) Hue.TEXT else Hue.DIM)
+                        textSize = Type.SUB - 0.5f
+                        typeface = uiFont
+                        includeFontPadding = false     // Mukta's own line gap is plenty
+                        setLineSpacing(0f, 0.86f)
+                    })
+                })
+            })
+        }
+        getString(R.string.whatsnew_kept).takeIf { it.isNotBlank() }?.let { kept ->
+            body.addView(LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+                setPadding(0, dp(12), 0, 0)
+                addView(LineIcon(this@MainActivity, "check", Hue.BERRY).apply {
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                    layoutParams = LinearLayout.LayoutParams(dp(16), dp(16)).also { it.rightMargin = dp(8) }
+                })
+                addView(TextView(this@MainActivity).apply {
+                    text = kept
+                    setTextColor(Hue.DIM)
+                    textSize = Type.SUB - 1f
+                    typeface = uiFont
+                })
+            })
+        }
+        body.addView(primary(getString(R.string.whatsnew_done)) { whatsNewDialog?.dismiss() }.apply {
             layoutParams = LinearLayout.LayoutParams(MP, WC).also { it.topMargin = dp(14) }
         })
-        card.addView(primary(getString(R.string.whatsnew_done)) { whatsNewDialog?.dismiss() }.apply {
-            layoutParams = LinearLayout.LayoutParams(MP, WC).also { it.topMargin = dp(18) }
+        body.addView(link(getString(R.string.whatsnew_changelog) + "  ↗") {
+            openExternal(CHANGELOG_URL)
+        }.apply {
+            setTextColor(Hue.BERRY)
+            typeface = uiFontSemi
+            layoutParams = lp(topMargin = 4, centerH = true)
+        })
+        // Support, last and quiet: the news is what this board is for.
+        body.addView(View(this).apply {
+            setBackgroundColor(Hue.LINE)
+            layoutParams = LinearLayout.LayoutParams(MP, dp(1)).also { it.topMargin = dp(8) }
+        })
+        body.addView(TextView(this).apply {
+            text = getString(R.string.whatsnew_thanks)
+            setTextColor(Hue.DIM)
+            textSize = Type.CAPTION + 2f
+            typeface = uiFont
+            gravity = Gravity.CENTER
+            setPadding(dp(4), dp(10), dp(4), 0)
+        })
+        body.addView(link(getString(R.string.whatsnew_support)) {
+            whatsNewDialog?.dismiss(); lnFromAbout = false; showSupport()
+        }.apply {
+            setTextColor(Hue.BERRY)
+            typeface = uiFontSemi
+            textSize = Type.CAPTION + 2f
+            layoutParams = lp(centerH = true)
         })
 
         val scroll = ScrollView(this).apply {
@@ -7845,6 +7905,187 @@ private class ConfettiView(ctx: Context, private val speed: Float) : View(ctx) {
             canvas.restore()
         }
         if (age < life) postInvalidateOnAnimation()
+    }
+}
+
+/**
+ * The update board's hero: a soft glow and slow rays (still when animations
+ * are off) behind the app's own icon on a ringed medal, and the version on a
+ * tilted tag. The icon is the launcher's two adaptive layers, so it is always
+ * the real one.
+ */
+private class WhatsNewHero(ctx: Context, private val speed: Float, private val version: String) : View(ctx) {
+    private val d = ctx.resources.displayMetrics.density
+    private val glow = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val ray = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val fade = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_IN)
+    }
+    private val ring = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val tag = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Hue.BERRY }
+    private val tagText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Hue.ON_ACCENT
+        textAlign = Paint.Align.CENTER
+        textSize = 15f * ctx.resources.displayMetrics.scaledDensity
+        typeface = Typeface.DEFAULT_BOLD
+    }
+    private val back = ctx.getDrawable(R.drawable.ic_launcher_background)
+    private val front = ctx.getDrawable(R.drawable.ic_launcher_foreground)
+    private val clip = Path()
+    private val wedge = Path()
+    private val box = RectF()
+    private val born = android.os.SystemClock.uptimeMillis()
+
+    private fun alpha(c: Int, a: Float) = Color.argb((a * 255).toInt(), Color.red(c), Color.green(c), Color.blue(c))
+
+    override fun onDraw(c: Canvas) {
+        val w = width.toFloat(); val h = height.toFloat()
+        if (w == 0f || h == 0f) return
+        val cx = w / 2f
+        // The glow and the rays, faded out before the hero ends: no hard edge.
+        val all = c.saveLayer(0f, 0f, w, h, null)
+        glow.shader = android.graphics.RadialGradient(cx, h, w * 0.72f,
+            alpha(Hue.BERRY, 0.34f), Color.TRANSPARENT, android.graphics.Shader.TileMode.CLAMP)
+        c.drawRect(0f, 0f, w, h, glow)
+
+        // The rays: twenty wedges about the medal, faded out from the middle.
+        val turn = if (speed > 0f) ((android.os.SystemClock.uptimeMillis() - born) / 1000f * 5f * speed) % 360f else 0f
+        val layer = c.saveLayer(0f, 0f, w, h, null)
+        ray.color = alpha(Hue.BERRY, 0.22f)
+        val r = maxOf(w, h) * 1.3f
+        box.set(cx - r, h - r, cx + r, h + r)
+        for (i in 0 until 20) {
+            wedge.reset(); wedge.moveTo(cx, h)
+            wedge.arcTo(box, turn + i * 18f, 6f); wedge.close()
+            c.drawPath(wedge, ray)
+        }
+        fade.shader = android.graphics.RadialGradient(cx, h, r * 0.48f,
+            intArrayOf(Color.BLACK, Color.BLACK, Color.TRANSPARENT), floatArrayOf(0f, 0.3f, 1f),
+            android.graphics.Shader.TileMode.CLAMP)
+        c.drawRect(0f, 0f, w, h, fade)
+        c.restoreToCount(layer)
+        fade.shader = android.graphics.LinearGradient(0f, h * 0.6f, 0f, h,
+            Color.BLACK, Color.TRANSPARENT, android.graphics.Shader.TileMode.CLAMP)
+        c.drawRect(0f, 0f, w, h, fade)
+        c.restoreToCount(all)
+
+        // The medal: an accent rim, a gap of panel, the icon.
+        val m = 84f * d
+        val top = h - 10f * d - m
+        box.set(cx - m / 2, top, cx + m / 2, top + m)
+        val rad = 24f * d
+        ring.color = Hue.BERRY
+        c.drawRoundRect(box.left - 7 * d, box.top - 7 * d, box.right + 7 * d, box.bottom + 7 * d, rad + 7 * d, rad + 7 * d, ring)
+        ring.color = Hue.PANEL
+        c.drawRoundRect(box.left - 5 * d, box.top - 5 * d, box.right + 5 * d, box.bottom + 5 * d, rad + 5 * d, rad + 5 * d, ring)
+        val save = c.save()
+        clip.reset(); clip.addRoundRect(box, rad, rad, Path.Direction.CW); c.clipPath(clip)
+        // An adaptive layer is 108 units of which 72 show: draw it 1.5× the medal.
+        val s = m * 1.5f
+        val l = (cx - s / 2).toInt(); val t = (top + m / 2 - s / 2).toInt()
+        back?.setBounds(l, t, l + s.toInt(), t + s.toInt()); back?.draw(c)
+        front?.setBounds(l, t, l + s.toInt(), t + s.toInt()); front?.draw(c)
+        c.restoreToCount(save)
+
+        // The version, on a tag tilted over the medal's corner.
+        val tw = tagText.measureText(version) + 20f * d
+        val th = 24f * d
+        val tx = box.right - 8f * d; val ty = box.top + 4f * d
+        val tilt = c.save()
+        c.rotate(8f, tx, ty)
+        c.drawRoundRect(tx - tw / 2, ty - th / 2, tx + tw / 2, ty + th / 2, th / 2, th / 2, tag)
+        val fm = tagText.fontMetrics
+        c.drawText(version, tx, ty - (fm.ascent + fm.descent) / 2, tagText)
+        c.restoreToCount(tilt)
+
+        if (speed > 0f) postInvalidateOnAnimation()
+    }
+}
+
+/**
+ * A line icon on the update board's cards, drawn in a 24-unit box with a
+ * 2-unit stroke: the screen off with a moon, a bolt, a magnifier, an upright
+ * phone, relays, servers, a lock, a check, a star.
+ */
+private class LineIcon(ctx: Context, private val kind: String, tint: Int) : View(ctx) {
+    private val p = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = tint; style = Paint.Style.STROKE; strokeWidth = 2f
+        strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
+    }
+    private val path = Path()
+    private val a = Path()
+    private val b = Path()
+
+    override fun onDraw(c: Canvas) {
+        val u = minOf(width, height) / 24f
+        if (u <= 0f) return
+        val save = c.save()
+        c.translate((width - 24 * u) / 2, (height - 24 * u) / 2)
+        c.scale(u, u)
+        path.reset()
+        when (kind) {
+            "screenoff" -> {
+                path.addRoundRect(5f, 2.5f, 15f, 21.5f, 2.5f, 2.5f, Path.Direction.CW)
+                path.moveTo(9f, 18.5f); path.lineTo(11f, 18.5f)
+                a.reset(); a.addCircle(18f, 8f, 4.2f, Path.Direction.CW)
+                b.reset(); b.addCircle(20.2f, 6.2f, 3.4f, Path.Direction.CW)
+                a.op(b, Path.Op.DIFFERENCE)
+                path.addPath(a)
+            }
+            "bolt" -> {
+                path.moveTo(13f, 2f); path.lineTo(4f, 14f); path.lineTo(11f, 14f)
+                path.lineTo(10f, 22f); path.lineTo(19f, 10f); path.lineTo(12f, 10f); path.close()
+            }
+            "zoom" -> {
+                path.addCircle(10.5f, 10.5f, 6.5f, Path.Direction.CW)
+                path.moveTo(20f, 20f); path.lineTo(15.2f, 15.2f)
+                path.moveTo(10.5f, 7.5f); path.lineTo(10.5f, 13.5f)
+                path.moveTo(7.5f, 10.5f); path.lineTo(13.5f, 10.5f)
+            }
+            "upright" -> {
+                path.addRoundRect(7f, 2.5f, 17f, 21.5f, 2.5f, 2.5f, Path.Direction.CW)
+                path.moveTo(11f, 18.5f); path.lineTo(13f, 18.5f)
+                path.moveTo(3f, 9f); path.quadTo(3.5f, 5.2f, 6f, 3f)
+                path.moveTo(21f, 9f); path.quadTo(20.5f, 5.2f, 18f, 3f)
+            }
+            "relay" -> {
+                path.addCircle(12f, 5.5f, 2.3f, Path.Direction.CW)
+                path.addCircle(5.5f, 18f, 2.3f, Path.Direction.CW)
+                path.addCircle(18.5f, 18f, 2.3f, Path.Direction.CW)
+                path.moveTo(10.9f, 7.6f); path.lineTo(6.6f, 15.9f)
+                path.moveTo(13.1f, 7.6f); path.lineTo(17.4f, 15.9f)
+                path.moveTo(7.8f, 18f); path.lineTo(16.2f, 18f)
+            }
+            "server" -> {
+                path.addRoundRect(3.5f, 4f, 20.5f, 11f, 2f, 2f, Path.Direction.CW)
+                path.addRoundRect(3.5f, 13f, 20.5f, 20f, 2f, 2f, Path.Direction.CW)
+                path.moveTo(7f, 7.5f); path.lineTo(7.01f, 7.5f)
+                path.moveTo(7f, 16.5f); path.lineTo(7.01f, 16.5f)
+                path.moveTo(11f, 7.5f); path.lineTo(17f, 7.5f)
+                path.moveTo(11f, 16.5f); path.lineTo(17f, 16.5f)
+            }
+            "lock" -> {
+                path.addRoundRect(5f, 11f, 19f, 21f, 2f, 2f, Path.Direction.CW)
+                path.moveTo(8f, 11f); path.lineTo(8f, 7.5f)
+                path.arcTo(8f, 3.5f, 16f, 11.5f, 180f, 180f, false)
+                path.lineTo(16f, 11f)
+            }
+            "check" -> {
+                p.strokeWidth = 2.6f
+                path.moveTo(4f, 12.5f); path.lineTo(9f, 17.5f); path.lineTo(20f, 6.5f)
+            }
+            else -> {   // star
+                for (i in 0 until 10) {
+                    val r = if (i % 2 == 0) 9.5f else 4f
+                    val t = Math.toRadians((i * 36 - 90).toDouble())
+                    val x = 12f + r * kotlin.math.cos(t).toFloat(); val y = 12.5f + r * kotlin.math.sin(t).toFloat()
+                    if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                }
+                path.close()
+            }
+        }
+        c.drawPath(path, p)
+        c.restoreToCount(save)
     }
 }
 

@@ -9,6 +9,8 @@ native engine (tawny-core, in Rust). It updates 1.0.5 from GitHub in place.
 Google Play stays on 1.0.5 for now.
 
 **New**
+- The Monitor keeps watching with its screen off, so there's no need to leave
+  it lit. A notification shows while it watches, with a button to stop.
 - Calls run on Tawny's own native engine instead of a web page inside the app.
   Every screen stays where it was, and your pairings and channels come across
   the first time it starts.
@@ -32,7 +34,7 @@ Google Play stays on 1.0.5 for now.
 
 **Older phones**
 - On a 32-bit phone the native engine doesn't load, and calls keep running on
-  the web engine, as in 1.0.5.
+  the web engine, as in 1.0.5 (with the Monitor's screen kept on).
 
 ## 1.0.5 (build 48)
 

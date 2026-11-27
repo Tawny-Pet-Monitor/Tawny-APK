@@ -6,11 +6,12 @@
     <string name="monitor_notice_idle">Waiting for a viewer. The camera is off until someone watches.</string>
     <string name="monitor_notice_live">Someone is watching. The camera and microphone are on.</string>
     <string name="monitor_notice_stop">Stop</string>
-    <!-- This build's own update notes: what changed in the native app. -->
-    <string-array name="whatsnew_notes">
-        <item>New: calls now run on Tawny\'s own native engine instead of a web page inside the app. Every screen stays where it was, and your pairings come across</item>
-        <item>New: pinch to zoom where your fingers are, and move the picture to see any part of the room</item>
-        <item>Fixed: a call repairs itself when its network path drops, and finds a Monitor that restarted</item>
-        <item>Fixed: a phone Monitor held upright shows the right way up on every Viewer, an iPhone included</item>
+    <!-- This build's own update board: what changed in the native app. -->
+    <string-array name="whatsnew_items">
+        <item>screenoff|Screen off, still watching|The Monitor keeps watching with its screen off. No need to leave it lit.</item>
+        <item>bolt|Calls that fix themselves|A new engine inside: if the Wi-Fi drops, the call comes back on its own.</item>
+        <item>zoom|Zoom where you pinch|Then drag to look into any corner of the room.</item>
+        <item>upright|Always the right way up|An upright phone shows upright on every screen, iPhone too.</item>
     </string-array>
+    <string name="whatsnew_kept">Your pets and pairings came along.</string>
 </resources>
